@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme.dart';
 import '../../../../data/services/notification_service.dart';
 import '../../../../data/database/db_helper.dart';
@@ -218,6 +219,11 @@ class _LibrettoViewState extends State<LibrettoView>
   Future<void> _init() async {
     _prefs = await SharedPreferences.getInstance();
     _totalKm = await DbHelper().getTotalKm();
+    
+    // Verifica lo stato reale dei permessi nel sistema operativo
+    final status = await Permission.notification.status;
+    _notificationsEnabled = status.isGranted;
+
     // Carica scadenze salvate
     _revisioneUltimo = _prefs?.getString('scad_revisione_ultimo') ?? '26.09.2024';
     _revisioneEsito = _prefs?.getString('scad_revisione_esito') ?? 'REGOLARE';
@@ -340,6 +346,31 @@ class _LibrettoViewState extends State<LibrettoView>
     );
   }
 
+  Future<void> _toggleNotifications(bool value) async {
+    if (value) {
+      final granted = await NotificationService.instance.requestPermission();
+      if (!granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('⚠️ Notifiche disattivate nel sistema. Attivale nelle impostazioni!'),
+              backgroundColor: AppTheme.alertRed,
+              action: SnackBarAction(
+                label: 'IMPOSTAZIONI',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
+        setState(() => _notificationsEnabled = false);
+        return;
+      }
+    }
+    setState(() => _notificationsEnabled = value);
+  }
+
   Future<void> _testLegaleNotification(String type) async {
     if (!_notificationsEnabled) return;
     final isBollo = type == 'BOLLO';
@@ -444,7 +475,7 @@ class _LibrettoViewState extends State<LibrettoView>
                 ),
                 Switch.adaptive(
                   value: _notificationsEnabled,
-                  onChanged: (v) => setState(() => _notificationsEnabled = v),
+                  onChanged: _toggleNotifications,
                   activeColor: AppTheme.activeCyan,
                 ),
                 const Icon(Icons.notifications_active,

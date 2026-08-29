@@ -49,7 +49,25 @@ class NotificationService {
       _notificationIcon = 'ic_notification';
       debugPrint("NotificationService: inizializzato con successo usando ic_notification");
     } catch (e) {
-      debugPrint("Errore inizializzazione NotificationService: $e");
+      debugPrint("Errore inizializzazione con ic_notification: $e. Provo fallback su launcher_icon...");
+      try {
+        const AndroidInitializationSettings androidInitFallback =
+            AndroidInitializationSettings('launcher_icon');
+        await _plugin.initialize(
+          const InitializationSettings(android: androidInitFallback, iOS: const DarwinInitializationSettings(
+            requestAlertPermission: true,
+            requestBadgePermission: true,
+            requestSoundPermission: true,
+          )),
+          onDidReceiveNotificationResponse: (_) {},
+        );
+        _notificationIcon = 'launcher_icon';
+        debugPrint("NotificationService: inizializzato con successo usando fallback launcher_icon");
+      } catch (err) {
+        debugPrint("Errore critico inizializzazione NotificationService: $err");
+        _initialized = false;
+        return; // interrompe l'inizializzazione anticipatamente per evitare di segnare _initialized = true
+      }
     }
 
     // 2. Crea i canali Android IMMEDIATAMENTE (prima di qualsiasi invio)
@@ -130,7 +148,7 @@ class NotificationService {
       icon: _notificationIcon,
       color: Color(0xFFCC0000),
       largeIcon:
-          const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+          const DrawableResourceAndroidBitmap('launcher_icon'),
       playSound: true,
       enableVibration: true,
       styleInformation: bigText != null
@@ -174,7 +192,7 @@ class NotificationService {
       icon: _notificationIcon,
       color: Color(0xFFCC6600),
       largeIcon:
-          const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+          const DrawableResourceAndroidBitmap('launcher_icon'),
       playSound: true,
       enableVibration: true,
       styleInformation: bigText != null
