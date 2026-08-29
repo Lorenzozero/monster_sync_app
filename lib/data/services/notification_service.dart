@@ -18,7 +18,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
-  String _notificationIcon = '@drawable/ic_notification';
+  String _notificationIcon = 'ic_notification';
 
   // ── ID canali ────────────────────────────────────────────────────────────────
   static const String _channelIdScadenze = 'monstersync_scadenze_v5';
@@ -31,7 +31,7 @@ class NotificationService {
     // 1. Impostazioni init per piattaforma usando l'icona silhouette per la status bar
     try {
       const AndroidInitializationSettings androidInit =
-          AndroidInitializationSettings('@drawable/ic_notification');
+          AndroidInitializationSettings('ic_notification');
 
       const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -46,8 +46,8 @@ class NotificationService {
         const InitializationSettings(android: androidInit, iOS: iosInit),
         onDidReceiveNotificationResponse: (_) {},
       );
-      _notificationIcon = '@drawable/ic_notification';
-      debugPrint("NotificationService: inizializzato con successo usando @drawable/ic_notification");
+      _notificationIcon = 'ic_notification';
+      debugPrint("NotificationService: inizializzato con successo usando ic_notification");
     } catch (e) {
       debugPrint("Errore inizializzazione NotificationService: $e");
     }

@@ -22,24 +22,33 @@ Questa repository contiene sia l'applicazione mobile **Flutter** (collegata via 
 
 ---
 
-## 🛠️ L'Hardware "Fai da Te" (Costo stimato: ~15€)
+## 🛠️ L'Hardware "Fai da Te" (Componenti Dettagliati)
 
-Per far funzionare la telemetria sulla moto, devi assemblare il *MonsterSync-Brain* e metterlo sotto la sella:
+Per far funzionare la telemetria sulla moto, devi assemblare il *MonsterSync-Brain* (sotto la sella o nel vano portaoggetti) utilizzando i seguenti componenti:
 
-1.  **ESP32 NodeMCU** (il cervello con Bluetooth Classic / BLE).
-2.  **Sensore MPU-6050** (accelerometro e giroscopio a 3 assi), fissato dritto e parallelo al telaio a traliccio.
-3.  **Modulo GPS Beitian BN-180** (o simile, configurato a 10Hz via comandi NMEA).
-4.  **Convertitore Step-Down (12V a 5V)** per alimentare l'ESP32 direttamente dalla batteria della moto senza farlo esplodere.
+1.  **ESP32 NodeMCU (WROOM-32)**:
+    *   *Scopo*: Riceve i dati dal GPS e dall'IMU, esegue il filtro di Kalman/Complementare per l'angolo di piega e trasmette tutto via Bluetooth Classic (SPP) o BLE all'applicazione mobile.
+    *   *Specifiche*: Frequenza 240MHz dual-core, Bluetooth integrato.
+2.  **Sensore IMU MPU-6050 (Giroscopio + Accelerometro a 3 assi)**:
+    *   *Scopo*: Misura l'accelerazione lineare e la velocità angolare.
+    *   *Specifiche*: Collegamento via bus I2C (SDA/SCL) all'ESP32. Fissalo perfettamente allineato all'asse longitudinale del telaio a traliccio.
+3.  **Modulo GPS Beitian BN-180 (o BN-220/BN-880)**:
+    *   *Scopo*: Rileva velocità reale, latitudine, longitudine e altitudine.
+    *   *Specifiche*: Configurato per comunicare a **10Hz** (10 aggiornamenti al secondo tramite protocollo UART/NMEA a 115200 baud). Collegato ai pin RX/TX dell'ESP32.
+4.  **Convertitore Step-Down DC-DC (LM2596 o Mini-360)**:
+    *   *Scopo*: Abbassa la tensione instabile della batteria della moto (12V-14.4V con alternatore acceso) ai 5V stabili necessari per alimentare l'ESP32 tramite pin Vin, senza bruciare tutto.
+5.  **Fusibile in linea da 1A (Consigliatissimo)**:
+    *   *Scopo*: Protezione contro i cortocircuiti. Le vibrazioni del bicilindrico Ducati tendono a spellare i cavi; il fusibile evita di dare fuoco al serbatoio della benzina.
 
 *Lo schema di collegamento e il firmware per l'ESP32 sono inclusi nella cartella `/ApexTelemetryBox`.*
 
 ---
 
-## 📱 L'Applicazione Flutter
+## 📱 L'Applicazione Flutter & Come compilare l'APK e l'IPA
 
 L'app è sviluppata in **Flutter** con un design cyberpunk metallico nero e ciano neon, ottimizzato per l'uso in moto (pulsanti giganti, tooltip esplicativi su ogni metrica).
 
-### Configurazione & Build
+### 🛠️ Configurazione Ambiente
 
 1.  Assicurati di avere Flutter installato (`flutter --version` >= 3.22).
 2.  Clona la repository ed entra nella cartella:
@@ -51,15 +60,31 @@ L'app è sviluppata in **Flutter** con un design cyberpunk metallico nero e cian
     ```bash
     flutter pub get
     ```
-4.  Avvia l'app in modalità debug:
+
+### 🤖 Compilazione per Android (APK)
+
+Per generare l'APK finale pronto per l'installazione su Android:
+```bash
+flutter build apk --release
+```
+*Troverai l'APK installabile sul telefono in `build/app/outputs/flutter-apk/app-release.apk`.*
+
+### 🍎 Compilazione per iOS (File .IPA)
+
+Per compilare ed esportare l'applicazione per iPhone (richiede un **Mac con Xcode** installato):
+
+1.  Prepara il build folder e apri la cartella `ios` in Xcode per configurare il Signing & Capabilities (seleziona il tuo account Apple Developer):
     ```bash
-    flutter run
+    flutter build ios --release --no-codesign
     ```
-5.  Per compilare l'APK finale pronto per l'installazione su Android:
+2.  Per creare l'archivio e generare il pacchetto distributivo `.ipa`:
     ```bash
-    flutter build apk --release
+    flutter build ipa --export-method development
     ```
-    *(Troverai l'APK in `build/app/outputs/flutter-apk/app-release.apk`)*
+    *Nota: Se disponi di un account Apple Developer a pagamento e vuoi testare l'app tramite TestFlight o distribuirla ad-hoc, sostituisci `development` con `app-store` o `ad-hoc`.*
+3.  Il file `.ipa` generato sarà disponibile all'interno della cartella:
+    `build/ios/ipa/monster_sync_app.ipa`
+    *Puoi installarlo sull'iPhone utilizzando Xcode, Apple Configurator o caricarlo direttamente su TestFlight.*
 
 ---
 

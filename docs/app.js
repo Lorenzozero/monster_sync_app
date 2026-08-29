@@ -62,7 +62,15 @@ tl.to(viewerParams, {
   onUpdate: updateCamera,
   duration: 1
 })
-// 4. Passaggio al Download finale (Sezione 5)
+// 4. Passaggio all'Hardware Dettagliato (Sezione 4.5)
+.to(viewerParams, {
+  orbitTheta: -90, // Vista dall'alto/laterale per mostrare la disposizione generale
+  orbitPhi: 45,
+  orbitRadius: 75,
+  onUpdate: updateCamera,
+  duration: 1
+})
+// 5. Passaggio al Download finale (Sezione 5)
 .to(viewerParams, {
   orbitTheta: -195, // Rotazione completa cinema-style
   orbitPhi: 75,
@@ -72,7 +80,7 @@ tl.to(viewerParams, {
 });
 
 // Dissolvenza e comparsa a scorrimento delle card informative (Fade-in)
-const sections = ["#progetto", "#telemetria", "#motore", "#scadenze", "#download"];
+const sections = ["#progetto", "#telemetria", "#motore", "#scadenze", "#hardware", "#download"];
 sections.forEach((sec) => {
   gsap.from(sec + " .max-w-lg", {
     scrollTrigger: {
