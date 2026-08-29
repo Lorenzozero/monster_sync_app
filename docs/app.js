@@ -414,10 +414,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const loaderBar = document.getElementById("loader-bar");
   const loaderPercentage = document.getElementById("loader-percentage");
   const loaderStatus = document.getElementById("loader-status");
-  const startBtn = document.getElementById("start-btn");
   const progressContainer = document.getElementById("progress-container");
   const progressInfo = document.getElementById("progress-info");
   const loaderScreen = document.getElementById("loader-screen");
+  const audioPrompt = document.getElementById("audio-prompt");
+
+  // Sblocco preventivo dell'AudioContext al tocco/click durante il caricamento
+  const unlockAudio = () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      const tempCtx = new AudioContextClass();
+      tempCtx.resume().then(() => {
+        tempCtx.close();
+      });
+    }
+
+    if (audioPrompt) {
+      audioPrompt.innerText = "AUDIO ABILITATO (PRONTO)";
+      audioPrompt.classList.remove("text-cyan-400", "animate-pulse");
+      audioPrompt.classList.add("text-green-400", "border-green-500/30");
+      setTimeout(() => {
+        audioPrompt.style.opacity = "0";
+      }, 600);
+    }
+
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+  };
+
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('touchstart', unlockAudio);
 
   let progress = 0;
   const statusTexts = [
@@ -446,20 +472,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (progress === 100) {
       clearInterval(interval);
       setTimeout(() => {
-        // Esegui la sgassata del bicilindrico desmodromico
+        // Esegui la sgassata del bicilindrico desmodromico immediata
         playDesmoEngineRoar();
 
-        // Effetto dissolvenza e transizione GSAP per rivelare la pagina
+        // Effetto dissolvenza e transizione GSAP per rivelare la pagina (più rapida)
         gsap.to(loaderScreen, {
           y: "-100vh",
           opacity: 0,
-          duration: 1.2,
-          ease: "power4.inOut",
+          duration: 1.0,
+          ease: "power3.inOut",
           onComplete: () => {
             loaderScreen.style.display = "none";
           }
         });
-      }, 500);
+      }, 150); // Avvio quasi istantaneo al 100% di progresso
     }
   }, 100);
 });
