@@ -19,7 +19,7 @@
   <!-- Google Model Viewer -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
 </head>
-<body class="bg-black text-white font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-black">
+<body class="text-white font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-black" style="background: linear-gradient(150deg, #8A0000 0%, #4D0000 40%, #110000 100%); background-attachment: fixed;">
 
   <!-- FULL SCREEN LOADER (SPLASH SCREEN) -->
   <div id="loader-screen" class="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center transition-all duration-700">
@@ -74,8 +74,8 @@
     </a>
   </header>
 
-  <!-- 3D MODEL VIEWER BACKGROUND/SPLIT SECTION -->
-  <div class="fixed top-0 right-0 w-full lg:w-1/2 h-screen z-10 pointer-events-none lg:pointer-events-auto">
+  <!-- 3D MODEL VIEWER BACKGROUND SECTION (FULL SCREEN) -->
+  <div class="fixed top-0 left-0 w-screen h-screen z-0 pointer-events-auto">
     <div class="w-full h-full relative flex items-center justify-center">
       <model-viewer
         id="ducati-viewer"
@@ -113,35 +113,37 @@
   </div>
 
   <!-- MAIN SCROLL CONTENT -->
-  <main class="relative z-20 w-full lg:w-1/2 min-h-screen">
+  <main class="relative z-20 w-full lg:w-1/2 min-h-screen pointer-events-none">
 
     <!-- HERO SECTION -->
     <section id="hero" class="min-h-screen flex flex-col justify-center px-6 md:px-16 pt-24 pb-12">
-      <div class="border-l-4 border-cyan-400 pl-4 mb-6">
-        <p class="font-orbitron text-xs tracking-[0.3em] text-cyan-400">TELEMETRIA APERTA & DESMO-HACKING</p>
-      </div>
-      <h1 class="font-teko text-7xl md:text-9xl leading-[0.8] tracking-tight font-black uppercase text-white mb-2">
-        MONSTER<span class="text-cyan-400">SYNC</span>
-      </h1>
-      <p class="font-orbitron text-xs md:text-sm tracking-[0.1em] text-red-500 font-bold uppercase mb-6">
-        Il cruscotto da astronave per il bicilindrico del 2007 (che non ne sapeva nulla)
-      </p>
-      <p class="text-gray-400 text-sm md:text-base max-w-lg mb-8 leading-relaxed">
-        Hai un <strong>Ducati Monster 695</strong> del 2007? Zero centraline moderne, nessun controllo di trazione, gas a cavo d'acciaio che se esageri la fisica ti fa subito un preventivo di danni, e un motore ad aria che cuoce le cosce. Abbiamo installato un cervello ESP32 da 5€ e un accelerometro sotto la sella per misurare la telemetria reale, tracciando pieghe e tempi con grafiche retro-futuristiche da cockpit aeronautico.
-      </p>
-      <div class="flex flex-wrap gap-4">
-        <a href="#download" class="px-8 py-4 bg-cyan-400 text-black hover:bg-white font-orbitron text-xs tracking-widest font-black transition-all rounded shadow-[0_0_20px_rgba(0,229,255,0.4)]">
-          SCARICA L'APK
-        </a>
-        <a href="#progetto" class="px-8 py-4 border border-white/10 hover:border-white/45 text-white bg-white/5 font-orbitron text-xs tracking-widest font-black transition-all rounded">
-          SCOPRI DI PIÙ
-        </a>
+      <div class="pointer-events-auto">
+        <div class="border-l-4 border-cyan-400 pl-4 mb-6">
+          <p class="font-orbitron text-xs tracking-[0.3em] text-cyan-400">TELEMETRIA APERTA & DESMO-HACKING</p>
+        </div>
+        <h1 class="font-teko text-7xl md:text-9xl leading-[0.8] tracking-tight font-black uppercase text-white mb-2">
+          MONSTER<span class="text-cyan-400">SYNC</span>
+        </h1>
+        <p class="font-orbitron text-xs md:text-sm tracking-[0.1em] text-red-500 font-bold uppercase mb-6">
+          Il cruscotto da astronave per il bicilindrico del 2007 (che non ne sapeva nulla)
+        </p>
+        <p class="text-gray-400 text-sm md:text-base max-w-lg mb-8 leading-relaxed">
+          Hai un <strong>Ducati Monster 695</strong> del 2007? Zero centraline moderne, nessun controllo di trazione, gas a cavo d'acciaio che se esageri la fisica ti fa subito un preventivo di danni, e un motore ad aria che cuoce le cosce. Abbiamo installato un cervello ESP32 da 5€ e un accelerometro sotto la sella per misurare la telemetria reale, tracciando pieghe e tempi con grafiche retro-futuristiche da cockpit aeronautico.
+        </p>
+        <div class="flex flex-wrap gap-4">
+          <a href="#download" class="px-8 py-4 bg-cyan-400 text-black hover:bg-white font-orbitron text-xs tracking-widest font-black transition-all rounded shadow-[0_0_20px_rgba(0,229,255,0.4)]">
+            SCARICA L'APK
+          </a>
+          <a href="#progetto" class="px-8 py-4 border border-white/10 hover:border-white/45 text-white bg-white/5 font-orbitron text-xs tracking-widest font-black transition-all rounded">
+            SCOPRI DI PIÙ
+          </a>
+        </div>
       </div>
     </section>
 
     <!-- SECTION 1: IL PROGETTO (PRESENTAZIONE & OBIETTIVI) -->
     <section id="progetto" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">01 / L'OBIETTIVO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">MOTO STORICA, CERVELLO DIGITALE</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -166,7 +168,7 @@
 
     <!-- SECTION 2: IMU & PIEGA -->
     <section id="telemetria" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">02 / INTERFACCIA GIROSCOPIO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">ANGOLI DI PIEGA MPU-6050</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -192,7 +194,7 @@
 
     <!-- SECTION 3: MOTORE L-TWIN -->
     <section id="motore" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">03 / RAFFREDDAMENTO MOTO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">IL MOTORE DESMODUE DA 695cc</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -210,7 +212,7 @@
 
     <!-- SECTION 4: SCADENZE & BUROCRAZIA -->
     <section id="scadenze" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">04 / SCADENZIARIO FISCALE</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">NOTIFICHE & BUROCRAZIA</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -226,7 +228,7 @@
 
     <!-- SECTION 4.5: HARDWARE DETTAGLIATO (COLLEGAMENTI & RISORSE) -->
     <section id="hardware" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">04.5 / HARDWARE & COLLEGAMENTI</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">RISORSE & SCHEMI DI RETE</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -257,7 +259,7 @@
 
     <!-- SECTION 5: COMPILAZIONE & CODICE -->
     <section id="download" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">05 / COMPILAZIONE</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">DOWNLOAD & CODICE</h2>
         <div class="space-y-6 text-gray-400 text-sm leading-relaxed">
