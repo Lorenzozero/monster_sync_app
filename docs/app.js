@@ -7,15 +7,21 @@ const viewer = document.getElementById('ducati-viewer');
 const viewerParams = {
   orbitTheta: 165,
   orbitPhi: 75,
-  orbitRadius: 70
+  orbitRadius: 85, // Rimpicciolito per inquadratura iniziale spaziosa
+  x: 18            // Spostato a destra per non coprire il testo "MONSTERSYNC"
 };
 
-// Funzione helper per aggiornare l'inquadratura del modello 3D
+// Funzione helper per aggiornare l'inquadratura del modello 3D (responsiva)
 function updateCamera() {
   if (viewer) {
     viewer.cameraOrbit = `${viewerParams.orbitTheta}deg ${viewerParams.orbitPhi}deg ${viewerParams.orbitRadius}%`;
+    const isMobile = window.innerWidth < 1024;
+    viewer.style.transform = `translateX(${isMobile ? 0 : viewerParams.x}vw)`;
   }
 }
+
+// Aggiorna l'inquadratura se l'utente ruota lo schermo o ridimensiona la finestra
+window.addEventListener('resize', updateCamera);
 
 // Gestione visibilità Hotspots
 const imuHotspot = document.querySelector('[slot="hotspot-imu"]');
@@ -45,8 +51,8 @@ viewer.addEventListener('load', () => {
   updateCamera();
   // Animazione iniziale d'ingresso
   gsap.fromTo(viewerParams, 
-    { orbitTheta: 360, orbitRadius: 100 },
-    { orbitTheta: 165, orbitRadius: 70, duration: 2.5, ease: "power3.out", onUpdate: updateCamera }
+    { orbitTheta: 360, orbitRadius: 110, x: 30 },
+    { orbitTheta: 165, orbitRadius: 85, x: 18, duration: 2.5, ease: "power3.out", onUpdate: updateCamera }
   );
 });
 
@@ -60,22 +66,24 @@ const tl = gsap.timeline({
   }
 });
 
-// Definiamo le tappe della telecamera in base allo scroll delle varie sezioni
-// Stage 1: Hero -> Concept (Nessun hotspot)
+// Definiamo le tappe della telecamera e degli spostamenti (x) per evitare sovrapposizioni
+// Stage 1: Hero -> Concept/Progetto (Nessun hotspot, moto a destra)
 tl.to(viewerParams, {
   orbitTheta: 270, // Vista laterale sinistra
   orbitPhi: 75,
-  orbitRadius: 68,
+  orbitRadius: 80,
+  x: 15,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility([]),
   onReverseComplete: () => setHotspotsVisibility([]),
   duration: 1
 })
-// Stage 2: Concept -> IMU/Piega (Evidenzia IMU)
+// Stage 2: Concept -> IMU/Piega (Evidenzia IMU, sposta un po' più al centro per focalizzare)
 .to(viewerParams, {
   orbitTheta: 180, // Inquadratura frontale/manubrio per ESP32
   orbitPhi: 60,
-  orbitRadius: 55,
+  orbitRadius: 65,
+  x: 10,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility(['imu']),
   onReverseComplete: () => setHotspotsVisibility([]),
@@ -85,7 +93,8 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: 90, // Inquadratura laterale motore L-twin (destra)
   orbitPhi: 80,
-  orbitRadius: 60,
+  orbitRadius: 65,
+  x: 12,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility(['engine']),
   onReverseComplete: () => setHotspotsVisibility(['imu']),
@@ -95,7 +104,8 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: 0, // Inquadratura posteriore/targa per scadenze
   orbitPhi: 75,
-  orbitRadius: 65,
+  orbitRadius: 68,
+  x: 14,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility([]),
   onReverseComplete: () => setHotspotsVisibility(['engine']),
@@ -103,9 +113,10 @@ tl.to(viewerParams, {
 })
 // Stage 5: Burocrazia -> Hardware Completo (Mostra tutti gli hotspot per panoramica)
 .to(viewerParams, {
-  orbitTheta: -90, // Vista dall'alto/laterale per mostrare la disposizione generale
+  orbitTheta: -90, // Vista dall'alto/laterale
   orbitPhi: 45,
   orbitRadius: 75,
+  x: 8,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility(['imu', 'engine', 'gps']),
   onReverseComplete: () => setHotspotsVisibility([]),
@@ -115,7 +126,8 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: -195, // Rotazione cinema-style
   orbitPhi: 75,
-  orbitRadius: 70,
+  orbitRadius: 80,
+  x: 12,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility([]),
   onReverseComplete: () => setHotspotsVisibility(['imu', 'engine', 'gps']),
@@ -308,29 +320,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (progress === 100) {
       clearInterval(interval);
-      // Nascondi caricamento e mostra pulsante di accensione
       setTimeout(() => {
-        progressContainer.style.display = "none";
-        progressInfo.style.display = "none";
-        startBtn.classList.remove("hidden");
+        // Esegui la sgassata del bicilindrico desmodromico
+        playDesmoEngineRoar();
+
+        // Effetto dissolvenza e transizione GSAP per rivelare la pagina
+        gsap.to(loaderScreen, {
+          y: "-100vh",
+          opacity: 0,
+          duration: 1.2,
+          ease: "power4.inOut",
+          onComplete: () => {
+            loaderScreen.style.display = "none";
+          }
+        });
       }, 500);
     }
   }, 100);
-
-  // Accensione motore e chiusura splash loader
-  startBtn.addEventListener("click", () => {
-    // Esegui la sgassata del bicilindrico desmodromico
-    playDesmoEngineRoar();
-
-    // Effetto dissolvenza e transizione GSAP per rivelare la pagina
-    gsap.to(loaderScreen, {
-      y: "-100vh",
-      opacity: 0,
-      duration: 1.2,
-      ease: "power4.inOut",
-      onComplete: () => {
-        loaderScreen.style.display = "none";
-      }
-    });
-  });
 });
