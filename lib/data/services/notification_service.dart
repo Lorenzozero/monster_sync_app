@@ -66,7 +66,7 @@ class NotificationService {
       } catch (err) {
         debugPrint("Errore critico inizializzazione NotificationService: $err");
         _initialized = false;
-        return; // interrompe l'inizializzazione anticipatamente per evitare di segnare _initialized = true
+        throw Exception("Inizializzazione fallita: $err");
       }
     }
 
@@ -188,6 +188,7 @@ class NotificationService {
       );
     } catch (e) {
       debugPrint("Errore invio notifica scadenza: $e");
+      rethrow;
     }
   }
 
@@ -235,6 +236,7 @@ class NotificationService {
       );
     } catch (e) {
       debugPrint("Errore invio notifica manutenzione: $e");
+      rethrow;
     }
   }
 }

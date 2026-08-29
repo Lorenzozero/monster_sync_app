@@ -357,7 +357,19 @@ class _LibrettoViewState extends State<LibrettoView>
       return;
     }
     setState(() => _notificationsEnabled = true);
-    await send();
+    try {
+      await send();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Errore notifica: $e'),
+            backgroundColor: AppTheme.alertRed,
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _testNotification(_ManutItem item) async {
