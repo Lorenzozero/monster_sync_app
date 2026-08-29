@@ -406,7 +406,7 @@ function playDesmoEngineRoar() {
 
   } catch (error) {
     console.error("Errore durante la sintesi audio:", error);
-  }  }
+  }
 }
 
 // Simulatore barra di caricamento (stile giochi di auto)
