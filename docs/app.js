@@ -43,18 +43,20 @@ if (noItem && viewer) {
 // Aggiorna l'inquadratura se l'utente ruota lo schermo o ridimensiona la finestra
 window.addEventListener('resize', updateCamera);
 
-// NAVBAR SCOMPARE IN BASSO / APPARE IN ALTO
-let lastScrollY = window.scrollY;
+// NAVBAR SCOMPARE IN BASSO / APPARE IN ALTO (GSAP ScrollTrigger)
 const header = document.querySelector('header');
 if (header) {
-  header.style.transition = 'transform 0.3s ease-in-out';
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > lastScrollY && window.scrollY > 80) {
-      header.style.transform = 'translateY(-100%)';
-    } else {
-      header.style.transform = 'translateY(0)';
+  ScrollTrigger.create({
+    start: "top -80",
+    end: 99999,
+    onUpdate: (self) => {
+      // self.direction: 1 = scorrimento verso il basso, -1 = verso l'alto
+      if (self.direction === 1) {
+        gsap.to(header, { yPercent: -100, duration: 0.3, ease: "power2.out" });
+      } else {
+        gsap.to(header, { yPercent: 0, duration: 0.3, ease: "power2.out" });
+      }
     }
-    lastScrollY = window.scrollY;
   });
 }
 
