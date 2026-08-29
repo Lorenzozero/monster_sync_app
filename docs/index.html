@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="it" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonsterSync - Telemetria Satirica & Sensori per Ducati Monster 695</title>
+  <meta name="description" content="La landing page definitiva per il progetto open-source MonsterSync. Telemetria GPS 10Hz e angoli di piega reali per il tuo L-Twin del 2007.">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Orbitron, Teko, Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Orbitron:wght@700;900&family=Teko:wght@700&display=swap" rel="stylesheet">
+  <!-- Custom Style -->
+  <link rel="stylesheet" href="style.css">
+  <!-- GSAP & ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <!-- Google Model Viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+</head>
+<body class="bg-black text-white font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-black">
+
+  <!-- GLOW DECORATIONS -->
+  <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] animate-pulse"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-600/10 rounded-full blur-[150px] animate-pulse" style="animation-duration: 6s;"></div>
+  </div>
+
+  <!-- NAVBAR -->
+  <header class="fixed top-0 left-0 w-full z-50 bg-black/60 backdrop-blur-md border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <img src="assets/ducati_logo.png" alt="Ducati Logo" class="h-10 w-auto object-contain">
+      <span class="font-orbitron text-xl font-black tracking-wider text-cyan-400">MONSTERSYNC</span>
+    </div>
+    <nav class="hidden md:flex gap-8 font-orbitron text-xs font-bold tracking-widest text-gray-400">
+      <a href="#progetto" class="hover:text-cyan-400 transition-colors">IL PROGETTO</a>
+      <a href="#telemetria" class="hover:text-cyan-400 transition-colors">IMU & PIEGA</a>
+      <a href="#motore" class="hover:text-cyan-400 transition-colors">L-TWIN 2007</a>
+      <a href="#download" class="hover:text-cyan-400 transition-colors">DOWNLOAD</a>
+    </nav>
+    <a href="https://github.com/Lorenzozero/monster_sync_app" target="_blank" class="flex items-center gap-2 border border-cyan-400/30 hover:border-cyan-400 bg-cyan-950/20 hover:bg-cyan-400 hover:text-black px-4 py-2 rounded-full font-orbitron text-[10px] tracking-wider font-bold transition-all">
+      <span>GITHUB REPO</span>
+      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+    </a>
+  </header>
+
+  <!-- 3D MODEL VIEWER BACKGROUND/SPLIT SECTION -->
+  <div class="fixed top-0 right-0 w-full lg:w-1/2 h-screen z-10 pointer-events-none lg:pointer-events-auto">
+    <div class="w-full h-full relative flex items-center justify-center">
+      <model-viewer
+        id="ducati-viewer"
+        src="assets/ducati_monster_3d.glb"
+        alt="Ducati Monster 695 3D Model"
+        camera-controls
+        disable-zoom
+        auto-rotate="false"
+        interaction-prompt="none"
+        camera-orbit="165deg 75deg 70%"
+        shadow-intensity="1.5"
+        shadow-softness="0.5"
+        environment-image="neutral"
+        class="w-full h-[70vh] lg:h-[85vh] bg-transparent outline-none pointer-events-auto"
+      >
+        <!-- Hotspots per spiegazione cinematiche -->
+        <div class="hotspot pointer-events-auto" slot="hotspot-imu" data-position="-0.02 0.52 0.05" data-normal="0 0 1" data-visibility="show">
+          <div class="hotspot-annotation">ESP32 + MPU-6050</div>
+        </div>
+        <div class="hotspot pointer-events-auto" slot="hotspot-engine" data-position="0.0 0.42 0.15" data-normal="0 1 0" data-visibility="show">
+          <div class="hotspot-annotation">Motore L-Twin</div>
+        </div>
+        <div class="hotspot pointer-events-auto" slot="hotspot-gps" data-position="0.0 0.88 0.4" data-normal="0 1 0" data-visibility="show">
+          <div class="hotspot-annotation">GPS 10Hz Beitian</div>
+        </div>
+      </model-viewer>
+    </div>
+  </div>
+
+  <!-- MAIN SCROLL CONTENT -->
+  <main class="relative z-20 w-full lg:w-1/2 min-h-screen">
+
+    <!-- HERO SECTION -->
+    <section id="hero" class="min-h-screen flex flex-col justify-center px-6 md:px-16 pt-24 pb-12">
+      <div class="border-l-4 border-cyan-400 pl-4 mb-6">
+        <p class="font-orbitron text-xs tracking-[0.3em] text-cyan-400">OPEN-SOURCE TELEMETRY APP</p>
+      </div>
+      <h1 class="font-teko text-7xl md:text-9xl leading-[0.8] tracking-tight font-black uppercase text-white mb-2">
+        MONSTER<span class="text-cyan-400">SYNC</span>
+      </h1>
+      <p class="font-orbitron text-sm md:text-base tracking-[0.1em] text-red-500 font-bold uppercase mb-6">
+        La telemetria cyberpunk per moto del 2007 (che non la volevano)
+      </p>
+      <p class="text-gray-400 text-sm md:text-base max-w-lg mb-8 leading-relaxed">
+        Hai un <strong>Ducati Monster 695</strong> del 2007 raffreddato ad aria? Nessuna centralina moderna? Nessun Bluetooth? Nessun problema. Abbiamo installato un cervello ESP32 e un giroscopio da 2 euro nel telaio per dirti quanto stai rischiando la vita ad ogni curva, il tutto con grafiche retro-futuristiche da navicella spaziale.
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="#download" class="px-8 py-4 bg-cyan-400 text-black hover:bg-white font-orbitron text-xs tracking-widest font-black transition-all rounded shadow-[0_0_20px_rgba(0,229,255,0.4)]">
+          SCARICA L'APK
+        </a>
+        <a href="#progetto" class="px-8 py-4 border border-white/20 hover:border-white/50 text-white font-orbitron text-xs tracking-widest font-black transition-all rounded">
+          SCOPRI DI PIÙ
+        </a>
+      </div>
+    </section>
+
+    <!-- SECTION 1: IL PROGETTO -->
+    <section id="progetto" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg">
+        <span class="font-orbitron text-[10px] tracking-[0.4em] text-red-500 font-bold uppercase">01 / CONCEPT</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">IL PROGETTO: MOTO VECCHIA, SENSORI NUOVI</h2>
+        <div class="space-y-4 text-gray-400 text-sm md:text-base leading-relaxed">
+          <p>
+            MonsterSync è un'applicazione mobile costruita in <strong>Flutter</strong> che si connette via Bluetooth ad un modulo custom ESP32 cablato sotto la sella.
+          </p>
+          <p class="border-l-2 border-red-500 pl-4 italic text-gray-300">
+            "Perché comprare una Panigale V4 da 30.000€ per avere i grafici di piega quando puoi spendere 15 euro di schede su Amazon e rischiare un cortocircuito sulla batteria di una moto del 2007?"
+          </p>
+          <p>
+            L'hardware legge i dati a frequenze folli e li trasmette al telefono in tempo reale, renderizzando un cruscotto futuristico cyberpunk con tracciamento GPS ad altissima precisione.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: IMU & PIEGA -->
+    <section id="telemetria" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg">
+        <span class="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400 font-bold uppercase">02 / HARDWARE IMU</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">ANGOLO DI PIEGA MPU-6050</h2>
+        <div class="space-y-4 text-gray-400 text-sm md:text-base leading-relaxed">
+          <p>
+            Il sensore giroscopico ed accelerometro a 3 assi <strong>MPU-6050</strong> misura le forze fisiche in curva. L'algoritmo calcola istante per istante l'angolo di inclinazione laterale (roll/lean), il beccheggio (pitch, ideale per registrare le impennate involontarie) e l'imbardata (yaw).
+          </p>
+          <p class="font-semibold text-white">
+            Niente più bugie al bar con gli amici. Se hai piegato a 15 gradi credendo di toccare il ginocchio, l'applicazione registrerà esattamente i tuoi 15 gradi di pura prudenza stradale.
+          </p>
+          <div class="grid grid-cols-2 gap-4 mt-6">
+            <div class="bg-white/5 border border-white/10 p-4 rounded">
+              <div class="font-orbitron text-xs text-cyan-400">CALCOLO ANGOLO</div>
+              <div class="font-teko text-3xl font-bold text-white mt-1">ROLL / LEAN</div>
+            </div>
+            <div class="bg-white/5 border border-white/10 p-4 rounded">
+              <div class="font-orbitron text-xs text-red-500">IMPENNATE</div>
+              <div class="font-teko text-3xl font-bold text-white mt-1">PITCH / WHEELIE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: MOTORE L-TWIN -->
+    <section id="motore" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg">
+        <span class="font-orbitron text-[10px] tracking-[0.4em] text-red-500 font-bold uppercase">03 / RAFFREDDAMENTO ARIA-OLIO</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">L-TWIN 695cc: NO LIQUID, NO PROBLEMS</h2>
+        <div class="space-y-4 text-gray-400 text-sm md:text-base leading-relaxed">
+          <p>
+            Il leggendario propulsore <strong>Ducati L-Twin da 695cc</strong> è un inno alla semplicità meccanica: raffreddamento ad aria e olio. Questo significa:
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-gray-300">
+            <li>Nessun radiatore che si buca con un sassolino.</li>
+            <li>Nessun liquido refrigerante che bolle d'estate.</li>
+            <li>Temperatura dell'olio che sfiora i 115°C al primo semaforo rosso, cuocendo lentamente le tue gambe.</li>
+          </ul>
+          <p>
+            L'app monitora costantemente la temperatura dell'olio motore tramite il sensore originale della moto, inviandoti un allarme visivo rosso quando la situazione si fa... letteralmente bollente.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: SCADENZE -->
+    <section id="scadenze" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg">
+        <span class="font-orbitron text-[10px] tracking-[0.4em] text-cyan-400 font-bold uppercase">04 / BUROCRAZIA</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">SCADENZE LEGALI EDITABILI</h2>
+        <div class="space-y-4 text-gray-400 text-sm md:text-base leading-relaxed">
+          <p>
+            La moto non è solo pieghe e rumore desmodromico. C'è anche lo Stato italiano che bussa alla porta. 
+          </p>
+          <p>
+            MonsterSync integra un gestore scadenze salvato localmente su <strong>SharedPreferences</strong>. Puoi modificare le date di scadenza di Bollo, Assicurazione RCA e Revisione Legale direttamente dall'interfaccia dell'app, ed inviarti notifiche push di test per verificare che tutto funzioni.
+          </p>
+          <p class="border-l-2 border-cyan-400 pl-4 italic text-gray-300">
+            "Evita che la tua moto venga sequestrata perché hai dimenticato la revisione biennale obbligatoria per i veicoli storici ultra-decennali. Salva la tua patente."
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: DOWNLOAD & OPEN-SOURCE -->
+    <section id="download" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg">
+        <span class="font-orbitron text-[10px] tracking-[0.4em] text-red-500 font-bold uppercase">05 / DISTRIBUTION</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">DOWNLOAD & OPEN-SOURCE</h2>
+        <div class="space-y-6 text-gray-400 text-sm md:text-base leading-relaxed">
+          <p>
+            Il codice sorgente dell'app Flutter e lo schema hardware ESP32 sono completamente <strong>Open Source</strong>. Vogliamo che ogni proprietario di vecchie Ducati possa personalizzarla e migliorarla.
+          </p>
+          <div class="bg-cyan-950/20 border border-cyan-500/20 p-6 rounded-lg">
+            <h3 class="font-orbitron text-xs tracking-wider text-cyan-400 font-bold mb-2">SCARICA L'APK PRONTO ALL'USO</h3>
+            <p class="text-xs text-gray-400 mb-4">Compilato in modalità release per Android, pronto per essere installato sul tuo telefono.</p>
+            <a href="https://github.com/Lorenzozero/monster_sync_app/releases/latest" target="_blank" class="inline-block px-6 py-3 bg-cyan-400 text-black hover:bg-white font-orbitron text-[10px] tracking-widest font-black transition-all rounded">
+              DOWNLOAD APK (.apk)
+            </a>
+          </div>
+          
+          <div class="flex gap-4 mt-4">
+            <a href="https://github.com/Lorenzozero/monster_sync_app" target="_blank" class="flex-grow text-center py-4 border border-white/10 hover:bg-white/5 rounded font-orbitron text-[10px] tracking-wider font-bold transition-all">
+              SFOGLIA IL CODICE SU GITHUB
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="relative z-20 w-full bg-black border-t border-white/5 py-12 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-6 text-gray-500 text-xs font-orbitron">
+    <div class="flex items-center gap-2">
+      <img src="assets/ducati_logo.png" alt="Logo" class="h-6 w-auto opacity-50">
+      <span>© 2026 MONSTERSYNC PROJECT. LORENZO GAROFFOLO.</span>
+    </div>
+    <div class="flex gap-6">
+      <a href="https://github.com/Lorenzozero" target="_blank" class="hover:text-cyan-400 transition-colors">GITHUB</a>
+    </div>
+    <div class="text-[9px] text-gray-600 text-center md:text-right max-w-xs">
+      Disclaimer: L'uso di questa app non previene le perdite d'olio tipiche dei vecchi motori Ducati. Guidate con prudenza.
+    </div>
+  </footer>
+
+  <!-- App logic with GSAP configuration -->
+  <script src="app.js"></script>
+</body>
+</html>

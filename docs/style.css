@@ -1,0 +1,81 @@
+/* font families classes */
+.font-orbitron {
+  font-family: 'Orbitron', sans-serif;
+}
+.font-teko {
+  font-family: 'Teko', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #030303;
+}
+::-webkit-scrollbar-thumb {
+  background: #00E5FF;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ff1a1a;
+}
+
+/* Hotspots model-viewer styles */
+.hotspot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #00E5FF;
+  background-color: #030303;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.hotspot:hover {
+  transform: scale(1.3);
+  background-color: #00E5FF;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 1);
+}
+
+.hotspot-annotation {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 6px 10px;
+  white-space: nowrap;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.3s;
+}
+
+.hotspot:hover .hotspot-annotation {
+  opacity: 1;
+  border-color: #00E5FF;
+}
+
+/* Set dynamic layout for split mobile/desktop */
+@media (max-width: 1024px) {
+  model-viewer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    opacity: 0.15;
+    z-index: 5;
+  }
+}
