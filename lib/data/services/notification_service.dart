@@ -136,41 +136,44 @@ class NotificationService {
     String? body,
     String? bigText,
   }) async {
-    if (!_initialized) await init();
+    try {
+      if (!_initialized) await init();
 
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      _channelIdScadenze,
-      'Scadenze Veicolo',
-      channelDescription: 'Avvisi scadenza',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: _notificationIcon,
-      color: Color(0xFFCC0000),
-      largeIcon:
-          const DrawableResourceAndroidBitmap('launcher_icon'),
-      playSound: true,
-      enableVibration: true,
-      styleInformation: bigText != null
-          ? BigTextStyleInformation(
-              bigText,
-              contentTitle: title,
-              summaryText: 'MonsterSync – DB76479',
-            )
-          : null,
-      ticker: title,
-    );
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        _channelIdScadenze,
+        'Scadenze Veicolo',
+        channelDescription: 'Avvisi scadenza',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: _notificationIcon,
+        color: const Color(0xFFCC0000),
+        largeIcon: null, // Rimosso per evitare crash in R.drawable poiché launcher_icon risiede in mipmap
+        playSound: true,
+        enableVibration: true,
+        styleInformation: bigText != null
+            ? BigTextStyleInformation(
+                bigText,
+                contentTitle: title,
+                summaryText: 'MonsterSync – DB76479',
+              )
+            : null,
+        ticker: title,
+      );
 
-    await _plugin.show(
-      id,
-      title,
-      body ?? '',
-      NotificationDetails(
-        android: androidDetails,
-        iOS: const DarwinNotificationDetails(
-            presentAlert: true, presentBadge: true, presentSound: true),
-      ),
-    );
+      await _plugin.show(
+        id,
+        title,
+        body ?? '',
+        NotificationDetails(
+          android: androidDetails,
+          iOS: const DarwinNotificationDetails(
+              presentAlert: true, presentBadge: true, presentSound: true),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Errore invio notifica scadenza: $e");
+    }
   }
 
   // ── SEND MANUTENZIONE ─────────────────────────────────────────────────────
@@ -180,40 +183,43 @@ class NotificationService {
     String? body,
     String? bigText,
   }) async {
-    if (!_initialized) await init();
+    try {
+      if (!_initialized) await init();
 
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      _channelIdManutenzione,
-      'Manutenzione Moto',
-      channelDescription: 'Promemoria manutenzione',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: _notificationIcon,
-      color: Color(0xFFCC6600),
-      largeIcon:
-          const DrawableResourceAndroidBitmap('launcher_icon'),
-      playSound: true,
-      enableVibration: true,
-      styleInformation: bigText != null
-          ? BigTextStyleInformation(
-              bigText,
-              contentTitle: title,
-              summaryText: 'MonsterSync – Manutenzione',
-            )
-          : null,
-      ticker: title,
-    );
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        _channelIdManutenzione,
+        'Manutenzione Moto',
+        channelDescription: 'Promemoria manutenzione',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: _notificationIcon,
+        color: const Color(0xFFCC6600),
+        largeIcon: null, // Rimosso per evitare crash in R.drawable
+        playSound: true,
+        enableVibration: true,
+        styleInformation: bigText != null
+            ? BigTextStyleInformation(
+                bigText,
+                contentTitle: title,
+                summaryText: 'MonsterSync – Manutenzione',
+              )
+            : null,
+        ticker: title,
+      );
 
-    await _plugin.show(
-      id,
-      title,
-      body ?? '',
-      NotificationDetails(
-        android: androidDetails,
-        iOS: const DarwinNotificationDetails(
-            presentAlert: true, presentBadge: true, presentSound: true),
-      ),
-    );
+      await _plugin.show(
+        id,
+        title,
+        body ?? '',
+        NotificationDetails(
+          android: androidDetails,
+          iOS: const DarwinNotificationDetails(
+              presentAlert: true, presentBadge: true, presentSound: true),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Errore invio notifica manutenzione: $e");
+    }
   }
 }

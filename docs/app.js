@@ -267,136 +267,146 @@ function playDesmoEngineRoar() {
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
 
-    if (ctx.state === 'suspended') {
-      console.warn("AudioContext sospeso dalle policy del browser. Attesa interazione utente.");
-      return;
-    }
+    const startSynthesis = () => {
+      engineRoarPlayed = true; // Segna come avviato con successo
+      const now = ctx.currentTime;
 
-    engineRoarPlayed = true; // Segna come avviato con successo
-    const now = ctx.currentTime;
+      // Oscillatore principale (sawtooth per il rombo meccanico)
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(45, now); // frequenza di base (minimo profondo)
 
-    // Oscillatore principale (sawtooth per il rombo meccanico)
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.frequency.setValueAtTime(45, now); // frequenza di base (minimo profondo)
+      // Secondo oscillatore (triangle per aggiungere armoniche e corpo)
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(90, now);
 
-    // Secondo oscillatore (triangle per aggiungere armoniche e corpo)
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(90, now);
+      // Filtro passa-basso per incupire il rombo
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(180, now);
+      filter.Q.setValueAtTime(4, now);
 
-    // Filtro passa-basso per incupire il rombo
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(180, now);
-    filter.Q.setValueAtTime(4, now);
+      // LFO per simulare i singoli scoppi dei pistoni (circa 7Hz a minimo)
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sawtooth';
+      lfo.frequency.setValueAtTime(7, now);
 
-    // LFO per simulare i singoli scoppi dei pistoni (circa 7Hz a minimo)
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sawtooth';
-    lfo.frequency.setValueAtTime(7, now);
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.setValueAtTime(12, now); // deviazione in Hz
 
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.setValueAtTime(12, now); // deviazione in Hz
-
-    // Noise Generator per il soffio dello scarico
-    const bufferSize = ctx.sampleRate * 2;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
-    }
-    const whiteNoise = ctx.createBufferSource();
-    whiteNoise.buffer = noiseBuffer;
-    whiteNoise.loop = true;
-
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.setValueAtTime(220, now);
-    noiseFilter.Q.setValueAtTime(2, now);
-
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.02, now);
-
-    // Nodo distorsione per simulare il carattere ruvido del motore desmo
-    const dist = ctx.createWaveShaper();
-    function makeDistortionCurve(amount) {
-      const k = typeof amount === 'number' ? amount : 50;
-      const n_samples = 44100;
-      const curve = new Float32Array(n_samples);
-      const deg = Math.PI / 180;
-      for (let i = 0; i < n_samples; ++i) {
-        const x = (i * 2) / n_samples - 1;
-        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+      // Noise Generator per il soffio dello scarico
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
       }
-      return curve;
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(220, now);
+      noiseFilter.Q.setValueAtTime(2, now);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.02, now);
+
+      // Nodo distorsione per simulare il carattere ruvido del motore desmo
+      const dist = ctx.createWaveShaper();
+      function makeDistortionCurve(amount) {
+        const k = typeof amount === 'number' ? amount : 50;
+        const n_samples = 44100;
+        const curve = new Float32Array(n_samples);
+        const deg = Math.PI / 180;
+        for (let i = 0; i < n_samples; ++i) {
+          const x = (i * 2) / n_samples - 1;
+          curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+        }
+        return curve;
+      }
+      dist.curve = makeDistortionCurve(10);
+      dist.oversample = '4x';
+
+      // Regolazione guadagni
+      const mainGain = ctx.createGain();
+      mainGain.gain.setValueAtTime(0.001, now);
+
+      // Connessioni LFO per la modulazione di frequenza (piston stroke)
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc1.frequency);
+      lfoGain.connect(osc2.frequency);
+
+      // Connessioni catena di sintesi
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(dist);
+      
+      // Connessioni rumore scarico
+      whiteNoise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      
+      // Mix finale
+      dist.connect(mainGain);
+      noiseGain.connect(mainGain);
+      mainGain.connect(ctx.destination);
+
+      // Avvio oscillatori
+      osc1.start(now);
+      osc2.start(now);
+      lfo.start(now);
+      whiteNoise.start(now);
+
+      // SIMULAZIONE RUGGITO / ACCELERATA (VROOOOM!)
+      // 1. Minimo per 0.3 secondi
+      mainGain.gain.exponentialRampToValueAtTime(0.7, now + 0.2);
+
+      // 2. Colpo di gas (Sgassata desmo) a 0.8s (da 45Hz a 130Hz, LFO da 7Hz a 26Hz)
+      osc1.frequency.exponentialRampToValueAtTime(130, now + 0.7);
+      osc2.frequency.exponentialRampToValueAtTime(260, now + 0.7);
+      lfo.frequency.linearRampToValueAtTime(24, now + 0.7);
+      filter.frequency.exponentialRampToValueAtTime(800, now + 0.7);
+      noiseGain.gain.linearRampToValueAtTime(0.08, now + 0.7);
+
+      // 3. Rilascio gas e ritorno al minimo a 1.6s
+      osc1.frequency.exponentialRampToValueAtTime(45, now + 1.5);
+      osc2.frequency.exponentialRampToValueAtTime(90, now + 1.5);
+      lfo.frequency.linearRampToValueAtTime(7, now + 1.5);
+      filter.frequency.exponentialRampToValueAtTime(180, now + 1.5);
+      noiseGain.gain.linearRampToValueAtTime(0.02, now + 1.5);
+
+      // 4. Spegnimento graduale (Fade-out)
+      mainGain.gain.setValueAtTime(0.7, now + 1.8);
+      mainGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+
+      // Stop dei nodi
+      setTimeout(() => {
+        osc1.stop();
+        osc2.stop();
+        lfo.stop();
+        whiteNoise.stop();
+        ctx.close();
+      }, 2800);
+    };
+
+    // Proviamo ad attivare il contesto (necessario su molti browser anche all'interno di un click)
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (ctx.state === 'running') {
+          startSynthesis();
+        }
+      }).catch((e) => {
+        console.warn("Impossibile sbloccare l'AudioContext:", e);
+      });
+    } else {
+      startSynthesis();
     }
-    dist.curve = makeDistortionCurve(10);
-    dist.oversample = '4x';
-
-    // Regolazione guadagni
-    const mainGain = ctx.createGain();
-    mainGain.gain.setValueAtTime(0.001, now);
-
-    // Connessioni LFO per la modulazione di frequenza (piston stroke)
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc1.frequency);
-    lfoGain.connect(osc2.frequency);
-
-    // Connessioni catena di sintesi
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(dist);
-    
-    // Connessioni rumore scarico
-    whiteNoise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    
-    // Mix finale
-    dist.connect(mainGain);
-    noiseGain.connect(mainGain);
-    mainGain.connect(ctx.destination);
-
-    // Avvio oscillatori
-    osc1.start(now);
-    osc2.start(now);
-    lfo.start(now);
-    whiteNoise.start(now);
-
-    // SIMULAZIONE RUGGITO / ACCELERATA (VROOOOM!)
-    // 1. Minimo per 0.3 secondi
-    mainGain.gain.exponentialRampToValueAtTime(0.7, now + 0.2);
-
-    // 2. Colpo di gas (Sgassata desmo) a 0.8s (da 45Hz a 130Hz, LFO da 7Hz a 26Hz)
-    osc1.frequency.exponentialRampToValueAtTime(130, now + 0.7);
-    osc2.frequency.exponentialRampToValueAtTime(260, now + 0.7);
-    lfo.frequency.linearRampToValueAtTime(24, now + 0.7);
-    filter.frequency.exponentialRampToValueAtTime(800, now + 0.7);
-    noiseGain.gain.linearRampToValueAtTime(0.08, now + 0.7);
-
-    // 3. Rilascio gas e ritorno al minimo a 1.6s
-    osc1.frequency.exponentialRampToValueAtTime(45, now + 1.5);
-    osc2.frequency.exponentialRampToValueAtTime(90, now + 1.5);
-    lfo.frequency.linearRampToValueAtTime(7, now + 1.5);
-    filter.frequency.exponentialRampToValueAtTime(180, now + 1.5);
-    noiseGain.gain.linearRampToValueAtTime(0.02, now + 1.5);
-
-    // 4. Spegnimento graduale (Fade-out)
-    mainGain.gain.setValueAtTime(0.7, now + 1.8);
-    mainGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
-
-    // Stop dei nodi
-    setTimeout(() => {
-      osc1.stop();
-      osc2.stop();
-      lfo.stop();
-      whiteNoise.stop();
-      ctx.close();
-    }, 2800);
 
   } catch (error) {
     console.error("Errore durante la sintesi audio:", error);
-  }
+  }  }
 }
 
 // Simulatore barra di caricamento (stile giochi di auto)
