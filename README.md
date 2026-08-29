@@ -3,50 +3,53 @@
 [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/Lorenzozero/monster_sync_app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Flutter](https://img.shields.io/badge/Flutter-v3.22.x-blue.svg)](https://flutter.dev)
+[![Landing Page](https://img.shields.io/badge/Landing--Page-Live%20on%20Vercel-red?style=flat&logo=vercel)](https://monster-sync-app.vercel.app)
 
-> **"Perché comprare una Panigale V4 da 30.000€ per avere i grafici delle pieghe quando puoi rischiare un cortocircuito sulla batteria di un Monster del 2007 con 15€ di schede comprate su Amazon?"**
+> **"Perché comprare una Panigale V4 da 30.000€ per avere i grafici delle pieghe quando puoi rischiare un cortocircuito sulla batteria di un Monster del 2007 con 22€ di schede comprate su AliExpress?"**
 
 Benvenuto in **MonsterSync**, il progetto open-source nato per dare un cervello digitale a una moto che originariamente comunicava con il mondo solo tramite vibrazioni bullonarie, perdite d'olio regolamentari e fumo desmodromico.
 
-Questa repository contiene sia l'applicazione mobile **Flutter** (collegata via Bluetooth a un ESP32) sia il codice della landing page dinamica in `/docs` con rotazioni cinematiche 3D ed effetti GSAP.
+Questa repository contiene l'applicazione mobile **Flutter** (collegata via Bluetooth a un ESP32) e il codice della landing page dinamica 3D (situata in `/docs`) hostabile su **Vercel** o **GitHub Pages**.
+
+🔗 **Landing Page Live**: [monster-sync-app.vercel.app](https://monster-sync-app.vercel.app) (Hostata su Vercel)
 
 ---
 
-## 🚀 Funzionalità (Reali & Satiriche)
+## 🚀 Funzionalità (Reali & Software-Powered)
 
 *   📐 **Angoli di Piega Reali (MPU-6050 + ESP32)**: Misura in tempo reale rollio, beccheggio e imbardata. Smentisci definitivamente i tuoi amici al bar: se hai piegato a 12° pensando di strisciare la saponetta, l'app registrerà spietatamente i tuoi 12° di pura prudenza stradale.
-*   📡 **GPS Beitian a 10Hz**: Tracciamento del percorso a 10 campionamenti al secondo. Perché registrare la tua strada verso il meccanico di fiducia con la precisione di un comune GPS a 1Hz sarebbe stato offensivo.
+*   🚦 **Marce Live (1ª - 6ª)**: Rilevamento in tempo reale della marcia inserita. Dato che il Monster 695 non ha un sensore fisico nel cambio, la marcia viene calcolata istantaneamente via software confrontando i giri del motore (RPM) e la velocità reale (GPS).
+*   ⛽ **Controllo Carburante & Stima Autonomia**: Il serbatoio del Monster ha solo un sensore per la spia di riserva a 12V. Il circuito legge questo segnale isolandolo con un fotoaccoppiatore. Il software dell'app fa il resto, stimando un indicatore a 8 tacche e calcolando i chilometri residui di autonomia in base allo storico dei consumi e della distanza percorsa.
+*   📍 **Smart Vehicle Finder (Dove ho parcheggiato?)**: Se vai a un raduno affollato o parcheggi al Passo del Muraglione in mezzo a centinaia di moto e non ricordi dove sia la tua, l'app memorizza in automatico l'ultima coordinata GPS ricevuta dall'ESP32 prima che il quadro venisse spento, guidandoti a piedi fino alla moto.
+*   🗺️ **Mappe Termiche Pieghe Offline**: Tracciamento della traiettoria GPS a 10Hz visualizzato su una mappa termica reale tramite OpenStreetMap (funzionante offline). Colora in ciano le curve lente o prudenti e in rosso neon quelle ad alta piega (>30°).
 *   🌡️ **Allarme Olio Bollente (L-Twin Aria & Olio)**: Il motore 695cc non ha radiatore né liquido refrigerante. Quando superi i 115°C al semaforo estivo mentre ti si cuociono le cosce, l'app passa al colore rosso allarme per ricordarti che sei su una griglia semovente.
 *   🔋 **Monitoraggio Tensione Batteria**: Un voltmetro in tempo reale. Chi possiede una Ducati sa che l'alternatore è un generatore di ansia e di guasti regolatori di tensione. Tieni d'occhio i volt prima di dover spingere la moto in salita.
-*   📋 **Scadenziario Burocratico Editabile**: Gestisci Bollo, Assicurazione RCA e Revisione Legale con date salvate localmente in `SharedPreferences`. Include un comodo tasto "TEST" per inviare notifiche push istantanee sul telefono e verificare che l'app sia sveglia.
+*   📋 **Scadenziario Burocratico & Manutenzioni**: Gestisci scadenze fiscali (Bollo, RCA, Revisione) e meccaniche (cinghie di distribuzione del Desmodue, tagliando, gioco valvole, olio) tramite database locale. Include notifiche native del sistema operativo Android/iOS per non dimenticare nulla.
 
 ---
 
-## 🛠️ L'Hardware "Fai da Te" (Componenti Dettagliati)
+## 🛠️ L'Hardware "Fai da Te" (BOM AliExpress ~22.30€)
 
-Per far funzionare la telemetria sulla moto, devi assemblare il *MonsterSync-Brain* (sotto la sella o nel vano portaoggetti) utilizzando i seguenti componenti:
+Per far funzionare la telemetria sulla moto, devi assemblare la centralina custom *MonsterSync-Brain* (da inserire sotto la sella o nel codone) utilizzando i seguenti componenti economici:
 
-1.  **ESP32 NodeMCU (WROOM-32)**:
-    *   *Scopo*: Riceve i dati dal GPS e dall'IMU, esegue il filtro di Kalman/Complementare per l'angolo di piega e trasmette tutto via Bluetooth Classic (SPP) o BLE all'applicazione mobile.
-    *   *Specifiche*: Frequenza 240MHz dual-core, Bluetooth integrato.
-2.  **Sensore IMU MPU-6050 (Giroscopio + Accelerometro a 3 assi)**:
-    *   *Scopo*: Misura l'accelerazione lineare e la velocità angolare.
-    *   *Specifiche*: Collegamento via bus I2C (SDA/SCL) all'ESP32. Fissalo perfettamente allineato all'asse longitudinale del telaio a traliccio.
-3.  **Modulo GPS Beitian BN-180 (o BN-220/BN-880)**:
-    *   *Scopo*: Rileva velocità reale, latitudine, longitudine e altitudine.
-    *   *Specifiche*: Configurato per comunicare a **10Hz** (10 aggiornamenti al secondo tramite protocollo UART/NMEA a 115200 baud). Collegato ai pin RX/TX dell'ESP32.
-4.  **Convertitore Step-Down DC-DC (LM2596 o Mini-360)**:
-    *   *Scopo*: Abbassa la tensione instabile della batteria della moto (12V-14.4V con alternatore acceso) ai 5V stabili necessari per alimentare l'ESP32 tramite pin Vin, senza bruciare tutto.
-5.  **Fusibile in linea da 1A (Consigliatissimo)**:
-    *   *Scopo*: Protezione contro i cortocircuiti. Le vibrazioni del bicilindrico Ducati tendono a spellare i cavi; il fusibile evita di dare fuoco al serbatoio della benzina.
-
-*Lo schema di collegamento e il firmware per l'ESP32 sono inclusi nella cartella `/ApexTelemetryBox`.*
+1.  **ESP32 NodeMCU (WROOM-32D)** (~€4.50):
+    *   *Scopo*: Riceve i dati dal GPS e dall'IMU, esegue il filtro di Kalman/Complementare per l'angolo di piega e trasmette tutto via Bluetooth Classic/BLE all'applicazione mobile.
+2.  **Sensore IMU MPU-6050 (GY-521)** (~€1.20):
+    *   *Scopo*: Misura l'accelerazione lineare e la velocità angolare. Va fissato solidamente e in bolla sul telaio della moto.
+3.  **Modulo GPS Beitian BN-180** (~€9.50):
+    *   *Scopo*: Rileva velocità reale, traiettoria ed altitudine a **10Hz** (10 aggiornamenti al secondo tramite protocollo UART/NMEA a 115200 baud).
+4.  **Fotoaccoppiatore PC817 (Isolamento I/O 12V)** (~€1.80):
+    *   *Scopo*: Isola elettricamente i segnali a 12V della moto (impulsi bobina iniettore per calcolare gli RPM, e cavo sensore riserva serbatoio) riducendoli a 3.3V sicuri per l'ESP32.
+5.  **Convertitore Step-Down DC-DC LM2596** (~€1.50):
+    *   *Scopo*: Abbassa la tensione instabile dell'impianto elettrico della moto (12V-14.4V) ai 5V stabili necessari per alimentare l'ESP32 tramite pin Vin.
+6.  **Scatola Waterproof IP65 + Fusibile 1A** (~€3.80):
+    *   *Scopo*: Alloggiamento impermeabile e protezione contro i cortocircuiti dovuti alle forti vibrazioni del bicilindrico.
 
 ---
 
-## 📱 L'Applicazione Flutter & Come compilare l'APK e l'IPA
+## 📱 L'Applicazione Flutter: Compilazione APK ed IPA
 
-L'app è sviluppata in **Flutter** con un design cyberpunk metallico nero e ciano neon, ottimizzato per l'uso in moto (pulsanti giganti, tooltip esplicativi su ogni metrica).
+L'app è sviluppata in **Flutter** con un design cyberpunk metallico nero e ciano neon, ottimizzato per l'uso in moto (pulsanti giganti, testi ad alta leggibilità, allarmi cromatici).
 
 ### 🛠️ Configurazione Ambiente
 
@@ -62,46 +65,39 @@ L'app è sviluppata in **Flutter** con un design cyberpunk metallico nero e cian
     ```
 
 ### 🤖 Compilazione per Android (APK)
-
 Per generare l'APK finale pronto per l'installazione su Android:
 ```bash
 flutter build apk --release
 ```
-*Troverai l'APK installabile sul telefono in `build/app/outputs/flutter-apk/app-release.apk`.*
+*Troverai l'APK installabile sul telefono in `build/app/outputs/flutter-apk/app-release.apk` (copiato in automatico sul Desktop nel nostro script di build).*
 
 ### 🍎 Compilazione per iOS (File .IPA)
-
 Per compilare ed esportare l'applicazione per iPhone (richiede un **Mac con Xcode** installato):
-
-1.  Prepara il build folder e apri la cartella `ios` in Xcode per configurare il Signing & Capabilities (seleziona il tuo account Apple Developer):
+1.  Prepara la build folder:
     ```bash
     flutter build ios --release --no-codesign
     ```
-2.  Per creare l'archivio e generare il pacchetto distributivo `.ipa`:
+2.  Genera il pacchetto distributivo `.ipa` per il caricamento su telefono:
     ```bash
     flutter build ipa --export-method development
     ```
-    *Nota: Se disponi di un account Apple Developer a pagamento e vuoi testare l'app tramite TestFlight o distribuirla ad-hoc, sostituisci `development` con `app-store` o `ad-hoc`.*
-3.  Il file `.ipa` generato sarà disponibile all'interno della cartella:
-    `build/ios/ipa/monster_sync_app.ipa`
-    *Puoi installarlo sull'iPhone utilizzando Xcode, Apple Configurator o caricarlo direttamente su TestFlight.*
+    *Il file `.ipa` generato sarà disponibile in `build/ios/ipa/monster_sync_app.ipa`.*
 
 ---
 
-## 🌐 La Landing Page (GSAP & 3D Model)
+## 🌐 La Landing Page 3D (GSAP & 3D Model)
 
-Abbiamo creato una landing page spettacolare dentro la cartella `/docs` che utilizza:
-*   **Google `<model-viewer>`** per caricare il modello 3D interattivo (`.glb`) del Ducati Monster.
-*   **GSAP + ScrollTrigger** per catturare lo scroll della pagina e ruotare/ingrandire cinematicamente la telecamera del modello 3D in corrispondenza delle varie sezioni esplicative (inquadratura del manubrio per l'IMU, del blocco motore e dello scarico).
-*   **Tailwind CSS** per un layout responsive e futuristico.
+La cartella `/docs` contiene la landing page cyberpunk che visualizza il modello 3D del Monster 695:
+*   Utilizza **Google `<model-viewer>`** per caricare il file `.glb` 3D.
+*   Utilizza **GSAP + ScrollTrigger** per spostare, ruotare ed inclinare la moto (fino a `-28°` di rollio in piega e `+18°` di pitch in impennata) in perfetta sincronia con lo scorrimento del testo.
+*   Utilizza **Web Audio API** per sintetizzare via codice il ruggito del motore Ducati Desmodue al primo tocco dello schermo.
 
-### Come visualizzarla localmente:
-Puoi lanciare un server locale velocissimo con Python:
-```bash
-cd docs
-python -m http.server 8000
-```
-Poi apri `http://localhost:8000` nel browser per goderti l'effetto cinema.
+### Distribuzione su Vercel:
+Per caricare la landing page su Vercel:
+1. Collega il tuo account GitHub a Vercel.
+2. Crea un nuovo progetto selezionando questo repository.
+3. Imposta la **Root Directory** su `docs` (lasciando vuoti i comandi di build).
+4. Clicca su **Deploy** e la tua landing page sarà live!
 
 ---
 
