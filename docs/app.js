@@ -256,14 +256,23 @@ sections.forEach((sec) => {
   });
 });
 
-// ── SISTEMA DI CARICAMENTO INIZIALE & SINTESI AUDIO ─────────────────────────
+let engineRoarPlayed = false;
 
 // Funzione di sintesi del motore L-Twin Ducati (Web Audio API)
 function playDesmoEngineRoar() {
+  if (engineRoarPlayed) return;
+
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
+
+    if (ctx.state === 'suspended') {
+      console.warn("AudioContext sospeso dalle policy del browser. Attesa interazione utente.");
+      return;
+    }
+
+    engineRoarPlayed = true; // Segna come avviato con successo
     const now = ctx.currentTime;
 
     // Oscillatore principale (sawtooth per il rombo meccanico)
@@ -444,3 +453,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 100);
 });
+
+// Registrazione ascoltatori interazione utente per avvio audio ritardato in caso di blocco autoplay
+function initAudioInteractionListeners() {
+  const triggerRoar = () => {
+    if (!engineRoarPlayed) {
+      playDesmoEngineRoar();
+    }
+    // Rimuove gli ascoltatori una volta avvenuta la prima interazione
+    document.removeEventListener('click', triggerRoar);
+    document.removeEventListener('touchstart', triggerRoar);
+    document.removeEventListener('scroll', triggerRoar);
+    document.removeEventListener('keydown', triggerRoar);
+  };
+
+  document.addEventListener('click', triggerRoar, { passive: true });
+  document.addEventListener('touchstart', triggerRoar, { passive: true });
+  document.addEventListener('scroll', triggerRoar, { passive: true });
+  document.addEventListener('keydown', triggerRoar, { passive: true });
+}
+
+initAudioInteractionListeners();

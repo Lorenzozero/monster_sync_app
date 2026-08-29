@@ -5,8 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MonsterSync - Telemetria Cyberpunk per Ducati Monster 695</title>
   <meta name="description" content="Il progetto open-source MonsterSync: telemetria GPS 10Hz, angoli di piega reali tramite IMU MPU-6050 ed ESP32 per la tua Ducati Monster 695 (2007).">
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS with Console Warn Silence -->
+  <script>
+    const _warn = console.warn;
+    console.warn = function(...args) {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+      _warn.apply(console, args);
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    setTimeout(() => { console.warn = _warn; }, 200);
+  </script>
   <!-- Google Fonts: Orbitron, Teko, Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -486,6 +496,6 @@
   </footer>
 
   <!-- App logic with GSAP configuration -->
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>
