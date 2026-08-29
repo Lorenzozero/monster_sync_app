@@ -31,6 +31,7 @@
   background-color: #030303;
   box-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
   cursor: pointer;
+  pointer-events: auto;
   transition: all 0.3s ease, opacity 0.5s ease;
   position: relative;
 }
@@ -67,15 +68,4 @@
   border-color: #00E5FF;
 }
 
-/* Set dynamic layout for split mobile/desktop */
-@media (max-width: 1024px) {
-  model-viewer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 100vw !important;
-    height: 100vh !important;
-    opacity: 0.15;
-    z-index: 5;
-  }
-}
+
