@@ -93,6 +93,18 @@ viewer.addEventListener('load', () => {
   );
 });
 
+// Target animazione della tabella (viene ignorato se no-item è attivo nell'URL)
+const tableAnimTarget = noItem ? [] : "#hardware-table-container";
+
+// Imposta lo stato iniziale 3D per la tabella hardware centrata
+gsap.set(tableAnimTarget, {
+  opacity: 0,
+  y: 80,
+  rotationX: 18,
+  scale: 0.85,
+  pointerEvents: "none"
+});
+
 // Creiamo una timeline agganciata allo scorrimento globale della pagina
 const tl = gsap.timeline({
   scrollTrigger: {
@@ -174,7 +186,7 @@ tl.to(viewerParams, {
   onReverseComplete: () => setHotspotsVisibility(['engine']),
   duration: 1
 })
-// Stage 6: Burocrazia -> Hardware / AliExpress (Dissolvenza Modello, Rivelazione Tabella Acquisti)
+// Stage 6: Burocrazia -> Hardware / AliExpress (Dissolvenza Modello, Rivelazione & Animazione Tabella)
 .to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 45,
@@ -188,18 +200,25 @@ tl.to(viewerParams, {
     setHotspotsVisibility([]);
     if (!noItem) {
       gsap.to(viewer, { opacity: 0, duration: 0.4 });
-      gsap.to("#hardware-table-container", { opacity: 1, pointerEvents: "auto", y: 0, duration: 0.4 });
     }
   },
   onReverseComplete: () => {
     setHotspotsVisibility([]);
     if (!noItem) {
       gsap.to(viewer, { opacity: 1, duration: 0.4 });
-      gsap.to("#hardware-table-container", { opacity: 0, pointerEvents: "none", y: 10, duration: 0.4 });
     }
   },
   duration: 1
 })
+// La tabella fa un ingresso 3D inclinato che segue lo scorrimento
+.to(tableAnimTarget, {
+  opacity: 1,
+  y: 0,
+  rotationX: 0,
+  scale: 1,
+  pointerEvents: "auto",
+  duration: 1
+}, "<")
 // Stage 7: Hardware -> Mockup Mobile (Moto riappare, Tabella scompare)
 .to(viewerParams, {
   orbitTheta: -90,
@@ -214,17 +233,24 @@ tl.to(viewerParams, {
     setHotspotsVisibility([]);
     if (!noItem) {
       gsap.to(viewer, { opacity: 1, duration: 0.4 });
-      gsap.to("#hardware-table-container", { opacity: 0, pointerEvents: "none", y: 10, duration: 0.4 });
     }
   },
   onReverseComplete: () => {
     if (!noItem) {
       gsap.to(viewer, { opacity: 0, duration: 0.4 });
-      gsap.to("#hardware-table-container", { opacity: 1, pointerEvents: "auto", y: 0, duration: 0.4 });
     }
   },
   duration: 1
 })
+// La tabella scivola verso l'alto e scompare ruotando in avanti
+.to(tableAnimTarget, {
+  opacity: 0,
+  y: -80,
+  rotationX: -18,
+  scale: 0.85,
+  pointerEvents: "none",
+  duration: 1
+}, "<")
 // Stage 8: Mockup -> Download finale (Rotazione finale cinematografica)
 .to(viewerParams, {
   orbitTheta: -195,
