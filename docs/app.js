@@ -121,7 +121,7 @@ tl.to(viewerParams, {
   orbitTheta: 270, // Vista laterale sinistra
   orbitPhi: 75,
   orbitRadius: 80,
-  x: 15,
+  x: 18,
   roll: 0,
   pitch: 0,
   yaw: 0,
@@ -135,7 +135,7 @@ tl.to(viewerParams, {
   orbitTheta: 180, // Inquadratura frontale per evidenziare la piega
   orbitPhi: 60,
   orbitRadius: 62,
-  x: 5,
+  x: -18,
   roll: -28,       // PIEGA DI 28 GRADI A SINISTRA!
   pitch: -5,
   yaw: 15,
@@ -149,7 +149,7 @@ tl.to(viewerParams, {
   orbitTheta: 220,
   orbitPhi: 70,
   orbitRadius: 75,
-  x: 15,
+  x: 18,
   roll: 0,
   pitch: 0,
   yaw: 0,
@@ -163,7 +163,7 @@ tl.to(viewerParams, {
   orbitTheta: 90, // Vista laterale destra per vedere l'impennata del motore
   orbitPhi: 80,
   orbitRadius: 65,
-  x: 10,
+  x: -18,
   roll: 0,
   pitch: 18,      // SOLLEVA LA RUOTA ANTERIORE DI 18 GRADI!
   yaw: 0,
@@ -177,7 +177,7 @@ tl.to(viewerParams, {
   orbitTheta: 0, // Inquadratura posteriore
   orbitPhi: 75,
   orbitRadius: 68,
-  x: 14,
+  x: 18,
   roll: 0,
   pitch: 0,
   yaw: 0,
@@ -224,7 +224,7 @@ tl.to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 55,
   orbitRadius: 75,
-  x: 10,
+  x: -18,
   roll: 0,
   pitch: 0,
   yaw: 0,
@@ -256,7 +256,7 @@ tl.to(viewerParams, {
   orbitTheta: -195,
   orbitPhi: 75,
   orbitRadius: 80,
-  x: 12,
+  x: 18,
   roll: 0,
   pitch: 0,
   yaw: 0,
