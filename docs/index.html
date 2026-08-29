@@ -21,6 +21,34 @@
 </head>
 <body class="bg-black text-white font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-black">
 
+  <!-- FULL SCREEN LOADER (SPLASH SCREEN) -->
+  <div id="loader-screen" class="fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center transition-all duration-700">
+    <div class="flex flex-col items-center max-w-md w-full px-6 text-center">
+      <!-- Glowing Logo -->
+      <div class="relative w-32 h-32 mb-8">
+        <img src="assets/ducati_logo.png" alt="Ducati Logo" class="w-full h-full object-contain filter drop-shadow-[0_0_20px_rgba(255,26,26,0.6)]">
+        <div class="absolute inset-0 bg-red-600/10 blur-xl rounded-full scale-75 animate-ping"></div>
+      </div>
+      <!-- Project Name -->
+      <h2 class="font-orbitron text-2xl font-black tracking-[0.3em] text-cyan-400 mb-2">MONSTERSYNC</h2>
+      <p class="font-orbitron text-[9px] text-gray-500 tracking-[0.2em] uppercase mb-10">INITIALIZING DESMODROMIC SYSTEMS...</p>
+      
+      <!-- Loading Progress -->
+      <div id="progress-container" class="w-full bg-neutral-900 border border-white/5 h-2 rounded-full overflow-hidden mb-4 relative">
+        <div id="loader-bar" class="h-full bg-gradient-to-r from-cyan-400 to-red-500 w-0 transition-all duration-100"></div>
+      </div>
+      <div id="progress-info" class="flex justify-between w-full font-orbitron text-[10px] text-gray-400 tracking-wider">
+        <span id="loader-status">CARICAMENTO TELEMETRIA...</span>
+        <span id="loader-percentage">0%</span>
+      </div>
+
+      <!-- Action Button (initially hidden) -->
+      <button id="start-btn" class="hidden mt-8 px-10 py-5 bg-red-600 hover:bg-white text-white hover:text-black font-orbitron text-xs tracking-[0.2em] font-black transition-all rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)] border border-red-500/30 uppercase animate-bounce">
+        ACCENDI IL MOTORE
+      </button>
+    </div>
+  </div>
+
   <!-- GLOW DECORATIONS -->
   <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
     <div class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[150px] animate-pulse"></div>
@@ -112,20 +140,26 @@
       </div>
     </section>
 
-    <!-- SECTION 1: IL PROGETTO -->
+    <!-- SECTION 1: IL PROGETTO (PRESENTAZIONE & OBIETTIVI) -->
     <section id="progetto" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
       <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
-        <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">01 / CONCEPT</span>
+        <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">01 / L'OBIETTIVO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">MOTO STORICA, CERVELLO DIGITALE</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
           <p>
-            MonsterSync è un'applicazione mobile costruita in <strong>Flutter</strong> che si connette via Bluetooth ad un modulo custom ESP32 cablato all'impianto elettrico originale.
+            L'<strong>obiettivo primario</strong> di MonsterSync è digitalizzare una delle ultime Ducati spoglie e analogiche (il Monster 695 a iniezione fisica del 2007) dotandola di telemetria attiva a basso costo senza intaccare l'affidabilità o l'integrità del cablaggio originale.
           </p>
+          <div class="bg-black/50 border border-white/5 p-4 rounded-xl space-y-2 my-4">
+            <span class="text-xs font-orbitron tracking-wider text-cyan-400 block font-bold">OBIETTIVI DEL PROGETTO:</span>
+            <ul class="list-disc list-inside text-xs space-y-1 text-gray-300">
+              <li>Registrazione della dinamica del veicolo (angoli di piega).</li>
+              <li>Tracciamento GPS ad alta precisione 10Hz per telemetria.</li>
+              <li>Monitoraggio salute (temperature, tensione alternatore desmo).</li>
+              <li>Zero abbonamenti cloud (100% database offline SQLite).</li>
+            </ul>
+          </div>
           <p class="border-l-2 border-red-500 pl-4 italic text-gray-300">
             "Perché spendere 30.000€ per una Superbike moderna quando puoi rischiare un cortocircuito sulla batteria di un vecchio Monster per estrarre grafici di piega in tempo reale?"
-          </p>
-          <p>
-            Legge i sensori ad altissima frequenza, li scrive su un database SQLite locale e renderizza una mappa termica del percorso colorata a seconda dell'inclinazione in curva. Tutto completamente offline e a costo hardware irrisorio.
           </p>
         </div>
       </div>
@@ -168,7 +202,7 @@
           </p>
           <ul class="list-disc list-inside space-y-2 text-gray-300">
             <li>Nessuna perdita di liquido o tubi in gomma che marciscono d'inverno.</li>
-            <li>In colonna nel traffico la temperatura dell'olio schizza a **115°C**, riscaldando la sella come un forno.</li>
+            <li>In colonna nel traffico la temperatura dell'olio schizza a **115°C**, riscaldando la sella come un forno per le tue cosce.</li>
             <li>Il sistema raccoglie la temperatura tramite l'NTC originale e la mostra nel cruscotto attivando allarmi visivi rossi quando la situazione si fa... rovente.</li>
           </ul>
         </div>
@@ -182,7 +216,7 @@
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">NOTIFICHE & BUROCRAZIA</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
           <p>
-            Non solo pieghe fisiche, ma anche scadenze burocratiche. MonsterSync integra un database locale in `SharedPreferences` per gestire le date di scadenza di **Revisione Legale, Bollo Piemonte e Polizza RCA**.
+            Non solo pieghe fisiche, ma anche scadenze burocratiche. MonsterSync integra un database locale in `SharedPreferences` per gestire le date di scadenza di **Revisione Legale, Bollo e Polizza RCA**.
           </p>
           <p>
             Puoi modificare le date a mano con un comodo DatePicker. E con il pulsante **TEST** puoi simulare la ricezione di notifiche push di sistema, verificate per non farti sequestrare il mezzo a causa di dimenticanze.
@@ -191,31 +225,31 @@
       </div>
     </section>
 
-    <!-- SECTION 4.5: HARDWARE DETTAGLIATO -->
+    <!-- SECTION 4.5: HARDWARE DETTAGLIATO (COLLEGAMENTI & RISORSE) -->
     <section id="hardware" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
       <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
-        <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">04.5 / HARDWARE</span>
-        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">L'HARDWARE DA COSTRUIRE</h2>
+        <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">04.5 / HARDWARE & COLLEGAMENTI</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">RISORSE & SCHEMI DI RETE</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
           <p>
-            La centralina fai-da-te costa circa **15 euro** di componenti elettronici e si monta facilmente nel sottosella:
+            La centralina custom MonsterSync-Brain comunica via seriale ed isola le tensioni per interfacciarsi in sicurezza con la moto:
           </p>
           <div class="space-y-4 mt-6">
             <div class="border-l-2 border-cyan-400 pl-3">
               <strong class="text-white text-xs block font-orbitron tracking-wider">1. ESP32 NodeMCU (WROOM-32D)</strong>
-              <span class="text-xs text-gray-400">Microcontrollore Dual-Core a 240MHz. Gestisce la ricezione dei sensori via bus I2C/UART e spedisce i dati via Bluetooth SPP/BLE.</span>
+              <span class="text-xs text-gray-400">Microcontrollore Dual-Core a 240MHz. Riceve i dati dal GPS (UART2, TX/RX a 115200 baud) e dall'IMU (Bus I2C, SDA/SCL), calcola l'assetto e lo invia via Bluetooth Classic / BLE al telefono.</span>
             </div>
             <div class="border-l-2 border-cyan-400 pl-3">
-              <strong class="text-white text-xs block font-orbitron tracking-wider">2. ACCELEROMETRO MPU-6050</strong>
-              <span class="text-xs text-gray-400">Rileva accelerazioni lineari (3 assi) e velocità angolari. Va installato dritto e saldo sul telaio a traliccio per evitare letture errate.</span>
+              <strong class="text-white text-xs block font-orbitron tracking-wider">2. ACCELEROMETRO MPU-6050 (I2C)</strong>
+              <span class="text-xs text-gray-400">Fornisce misure di rollio, imbardata e beccheggio reali. Montato solidamente in piano per azzerare il rumore.</span>
             </div>
             <div class="border-l-2 border-cyan-400 pl-3">
               <strong class="text-white text-xs block font-orbitron tracking-wider">3. RICEVITORE GPS 10Hz (BEITIAN BN-180)</strong>
-              <span class="text-xs text-gray-400">Indispensabile per tracciare il giro a 10 campionamenti al secondo. Collegato alla seriale UART2 dell'ESP32.</span>
+              <span class="text-xs text-gray-400">Configurato a 10 aggiornamenti al secondo (10Hz) per evitare di perdere la traiettoria millimetrica del giro.</span>
             </div>
             <div class="border-l-2 border-cyan-400 pl-3">
-              <strong class="text-white text-xs block font-orbitron tracking-wider">4. STEP-DOWN BUCK & FUSIBILE 1A</strong>
-              <span class="text-xs text-gray-400">Abbassa stancamente i 12V-14V rumorosi dell'alternatore della moto ai 5V stabili per l'ESP32. Un fusibile in linea evita di dare fuoco al serbatoio.</span>
+              <strong class="text-white text-xs block font-orbitron tracking-wider">4. BUCK STEP-DOWN & ISOLAMENTO PC817</strong>
+              <span class="text-xs text-gray-400">Modulo optoisolatore PC817 per leggere in sicurezza i segnali a 12V (iniettore RPM, galleggiante benzina) portandoli a 3.3V protetti. Step-down LM2596 e fusibile da 1A collegati alla linea sotto chiave delle luci posteriori.</span>
             </div>
           </div>
         </div>
@@ -268,13 +302,13 @@
   <footer class="relative z-20 w-full bg-black border-t border-white/5 py-12 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-6 text-gray-500 text-xs font-orbitron">
     <div class="flex items-center gap-2">
       <img src="assets/ducati_logo.png" alt="Logo" class="h-6 w-auto opacity-50">
-      <span>© 2026 MONSTERSYNC PROJECT. LORENZO GAROFFOLO.</span>
+      <span>© 2026 MONSTERSYNC PROJECT. SVILUPPATO DA <a href="https://github.com/Lorenzozero" target="_blank" class="text-cyan-400 hover:text-white underline font-black">LORENZO GAROFFOLO</a>.</span>
     </div>
     <div class="flex gap-6">
-      <a href="https://github.com/Lorenzozero" target="_blank" class="hover:text-cyan-400 transition-colors">GITHUB</a>
+      <a href="https://github.com/Lorenzozero" target="_blank" class="hover:text-cyan-400 transition-colors">GITHUB PROFILE</a>
     </div>
     <div class="text-[9px] text-gray-600 text-center md:text-right max-w-xs leading-normal">
-      Disclaimer: L'uso di questa app non previene le vibrazioni bullonarie o le perdite d'olio regolamentari delle Ducati vintage. Tenere sempre a portata di mano brugole da 5 e chiavi da 10.
+      Disclaimer: L'uso di questa app non previene le vibrazioni o le perdite d'olio regolamentari delle Ducati vintage. Tenere sempre a portata di mano brugole da 5 e chiavi da 10.
     </div>
   </footer>
 
