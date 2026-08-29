@@ -85,19 +85,10 @@ Per compilare ed esportare l'applicazione per iPhone (richiede un **Mac con Xcod
 
 ---
 
-## 🌐 La Landing Page 3D (GSAP & 3D Model)
+## 🌐 Landing Page
 
-La cartella `/docs` contiene la landing page cyberpunk che visualizza il modello 3D del Monster 695:
-*   Utilizza **Google `<model-viewer>`** per caricare il file `.glb` 3D.
-*   Utilizza **GSAP + ScrollTrigger** per spostare, ruotare ed inclinare la moto (fino a `-28°` di rollio in piega e `+18°` di pitch in impennata) in perfetta sincronia con lo scorrimento del testo.
-*   Utilizza **Web Audio API** per sintetizzare via codice il ruggito del motore Ducati Desmodue al primo tocco dello schermo.
-
-### Distribuzione su Vercel:
-Per caricare la landing page su Vercel:
-1. Collega il tuo account GitHub a Vercel.
-2. Crea un nuovo progetto selezionando questo repository.
-3. Imposta la **Root Directory** su `docs` (lasciando vuoti i comandi di build).
-4. Clicca su **Deploy** e la tua landing page sarà live!
+La landing page del progetto con scrollytelling interattivo 3D del Monster 695 e sintesi sonora del motore è hostata qui:
+👉 **[https://monster-sync-app.vercel.app/](https://monster-sync-app.vercel.app/)**
 
 ---
 
