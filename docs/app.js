@@ -8,20 +8,55 @@ const viewerParams = {
   orbitTheta: 165,
   orbitPhi: 75,
   orbitRadius: 85, // Rimpicciolito per inquadratura iniziale spaziosa
-  x: 18            // Spostato a destra per non coprire il testo "MONSTERSYNC"
+  x: 18,           // Spostato a destra per non coprire il testo "MONSTERSYNC"
+  roll: 0,
+  pitch: 0,
+  yaw: 0
 };
 
-// Funzione helper per aggiornare l'inquadratura del modello 3D (responsiva)
+// Parsing del parametro query 'no-item'
+const urlParams = new URLSearchParams(window.location.search);
+const noItem = urlParams.get('no-item') === 'true';
+
+// Funzione helper per aggiornare l'inquadratura e l'orientamento 3D del modello (responsiva)
 function updateCamera() {
   if (viewer) {
-    viewer.cameraOrbit = `${viewerParams.orbitTheta}deg ${viewerParams.orbitPhi}deg ${viewerParams.orbitRadius}%`;
-    const isMobile = window.innerWidth < 1024;
-    viewer.style.transform = `translateX(${isMobile ? 0 : viewerParams.x}vw)`;
+    if (!noItem) {
+      viewer.cameraOrbit = `${viewerParams.orbitTheta}deg ${viewerParams.orbitPhi}deg ${viewerParams.orbitRadius}%`;
+      viewer.orientation = `${viewerParams.roll}deg ${viewerParams.pitch}deg ${viewerParams.yaw}deg`;
+      const isMobile = window.innerWidth < 1024;
+      viewer.style.transform = `translateX(${isMobile ? 0 : viewerParams.x}vw)`;
+    }
+  }
+}
+
+// Se no-item è attivo, nascondi del tutto il modello 3D e rivela sempre la tabella costi
+if (noItem && viewer) {
+  viewer.style.display = 'none';
+  const table = document.getElementById('hardware-table-container');
+  if (table) {
+    table.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-10');
+    table.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
   }
 }
 
 // Aggiorna l'inquadratura se l'utente ruota lo schermo o ridimensiona la finestra
 window.addEventListener('resize', updateCamera);
+
+// NAVBAR SCOMPARE IN BASSO / APPARE IN ALTO
+let lastScrollY = window.scrollY;
+const header = document.querySelector('header');
+if (header) {
+  header.style.transition = 'transform 0.3s ease-in-out';
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > lastScrollY && window.scrollY > 80) {
+      header.style.transform = 'translateY(-100%)';
+    } else {
+      header.style.transform = 'translateY(0)';
+    }
+    lastScrollY = window.scrollY;
+  });
+}
 
 // Gestione visibilità Hotspots
 const imuHotspot = document.querySelector('[slot="hotspot-imu"]');
@@ -51,8 +86,8 @@ viewer.addEventListener('load', () => {
   updateCamera();
   // Animazione iniziale d'ingresso
   gsap.fromTo(viewerParams, 
-    { orbitTheta: 360, orbitRadius: 110, x: 30 },
-    { orbitTheta: 165, orbitRadius: 85, x: 18, duration: 2.5, ease: "power3.out", onUpdate: updateCamera }
+    { orbitTheta: 360, orbitRadius: 110, x: 30, roll: 0, pitch: 0, yaw: 0 },
+    { orbitTheta: 165, orbitRadius: 85, x: 18, roll: 0, pitch: 0, yaw: 0, duration: 2.5, ease: "power3.out", onUpdate: updateCamera }
   );
 });
 
@@ -66,76 +101,145 @@ const tl = gsap.timeline({
   }
 });
 
-// Definiamo le tappe della telecamera e degli spostamenti (x) per evitare sovrapposizioni
-// Stage 1: Hero -> Concept/Progetto (Nessun hotspot, moto a destra)
+// Definiamo le tappe della telecamera, inclinazione (roll), impennata (pitch) e spostamenti
+// Stage 1: Hero -> Concept/Progetto (Moto a destra, in piedi)
 tl.to(viewerParams, {
   orbitTheta: 270, // Vista laterale sinistra
   orbitPhi: 75,
   orbitRadius: 80,
   x: 15,
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility([]),
   onReverseComplete: () => setHotspotsVisibility([]),
   duration: 1
 })
-// Stage 2: Concept -> IMU/Piega (Evidenzia IMU, sposta un po' più al centro per focalizzare)
+// Stage 2: Concept -> IMU & PIEGA (MOTO PIEGATA A SINISTRA!)
 .to(viewerParams, {
-  orbitTheta: 180, // Inquadratura frontale/manubrio per ESP32
+  orbitTheta: 180, // Inquadratura frontale per evidenziare la piega
   orbitPhi: 60,
-  orbitRadius: 65,
-  x: 10,
+  orbitRadius: 62,
+  x: 5,
+  roll: -28,       // PIEGA DI 28 GRADI A SINISTRA!
+  pitch: -5,
+  yaw: 15,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility(['imu']),
   onReverseComplete: () => setHotspotsVisibility([]),
   duration: 1
 })
-// Stage 3: IMU/Piega -> Motore (Evidenzia Motore)
+// Stage 3: IMU & Piega -> Parametri Acquisiti (Raddrizza per panoramica logger)
 .to(viewerParams, {
-  orbitTheta: 90, // Inquadratura laterale motore L-twin (destra)
-  orbitPhi: 80,
-  orbitRadius: 65,
-  x: 12,
+  orbitTheta: 220,
+  orbitPhi: 70,
+  orbitRadius: 75,
+  x: 15,
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
   onUpdate: updateCamera,
-  onStart: () => setHotspotsVisibility(['engine']),
+  onStart: () => setHotspotsVisibility([]),
   onReverseComplete: () => setHotspotsVisibility(['imu']),
   duration: 1
 })
-// Stage 4: Motore -> Burocrazia/Codone (Nessun hotspot, coda)
+// Stage 4: Parametri -> Motore (MOTO IN IMPENNATA / WHEELIE!)
 .to(viewerParams, {
-  orbitTheta: 0, // Inquadratura posteriore/targa per scadenze
+  orbitTheta: 90, // Vista laterale destra per vedere l'impennata del motore
+  orbitPhi: 80,
+  orbitRadius: 65,
+  x: 10,
+  roll: 0,
+  pitch: 18,      // SOLLEVA LA RUOTA ANTERIORE DI 18 GRADI!
+  yaw: 0,
+  onUpdate: updateCamera,
+  onStart: () => setHotspotsVisibility(['engine']),
+  onReverseComplete: () => setHotspotsVisibility([]),
+  duration: 1
+})
+// Stage 5: Motore -> Burocrazia/Scadenze (Raddrizza e inquadra il codone/targa)
+.to(viewerParams, {
+  orbitTheta: 0, // Inquadratura posteriore
   orbitPhi: 75,
   orbitRadius: 68,
   x: 14,
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility([]),
   onReverseComplete: () => setHotspotsVisibility(['engine']),
   duration: 1
 })
-// Stage 5: Burocrazia -> Hardware Completo (Mostra tutti gli hotspot per panoramica)
+// Stage 6: Burocrazia -> Hardware / AliExpress (Dissolvenza Modello, Rivelazione Tabella Acquisti)
 .to(viewerParams, {
-  orbitTheta: -90, // Vista dall'alto/laterale
+  orbitTheta: -90,
   orbitPhi: 45,
   orbitRadius: 75,
   x: 8,
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
   onUpdate: updateCamera,
-  onStart: () => setHotspotsVisibility(['imu', 'engine', 'gps']),
-  onReverseComplete: () => setHotspotsVisibility([]),
+  onStart: () => {
+    setHotspotsVisibility([]);
+    if (!noItem) {
+      gsap.to(viewer, { opacity: 0, duration: 0.4 });
+      gsap.to("#hardware-table-container", { opacity: 1, pointerEvents: "auto", y: 0, duration: 0.4 });
+    }
+  },
+  onReverseComplete: () => {
+    setHotspotsVisibility([]);
+    if (!noItem) {
+      gsap.to(viewer, { opacity: 1, duration: 0.4 });
+      gsap.to("#hardware-table-container", { opacity: 0, pointerEvents: "none", y: 10, duration: 0.4 });
+    }
+  },
   duration: 1
 })
-// Stage 6: Hardware -> Download finale (Rotazione completa desmo-cinema)
+// Stage 7: Hardware -> Mockup Mobile (Moto riappare, Tabella scompare)
 .to(viewerParams, {
-  orbitTheta: -195, // Rotazione cinema-style
+  orbitTheta: -90,
+  orbitPhi: 55,
+  orbitRadius: 75,
+  x: 10,
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
+  onUpdate: updateCamera,
+  onStart: () => {
+    setHotspotsVisibility([]);
+    if (!noItem) {
+      gsap.to(viewer, { opacity: 1, duration: 0.4 });
+      gsap.to("#hardware-table-container", { opacity: 0, pointerEvents: "none", y: 10, duration: 0.4 });
+    }
+  },
+  onReverseComplete: () => {
+    if (!noItem) {
+      gsap.to(viewer, { opacity: 0, duration: 0.4 });
+      gsap.to("#hardware-table-container", { opacity: 1, pointerEvents: "auto", y: 0, duration: 0.4 });
+    }
+  },
+  duration: 1
+})
+// Stage 8: Mockup -> Download finale (Rotazione finale cinematografica)
+.to(viewerParams, {
+  orbitTheta: -195,
   orbitPhi: 75,
   orbitRadius: 80,
   x: 12,
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
   onUpdate: updateCamera,
   onStart: () => setHotspotsVisibility([]),
-  onReverseComplete: () => setHotspotsVisibility(['imu', 'engine', 'gps']),
+  onReverseComplete: () => setHotspotsVisibility([]),
   duration: 1
 });
 
 // Dissolvenza e comparsa a scorrimento delle card informative (Fade-in / Parallax)
-const sections = ["#progetto", "#telemetria", "#motore", "#scadenze", "#hardware", "#download"];
+const sections = ["#progetto", "#telemetria", "#valori", "#motore", "#scadenze", "#hardware", "#mockup", "#download"];
 sections.forEach((sec) => {
   gsap.from(sec + " .max-w-lg", {
     scrollTrigger: {

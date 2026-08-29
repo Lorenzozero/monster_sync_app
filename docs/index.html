@@ -57,12 +57,14 @@
       <img src="assets/ducati_logo.png" alt="Ducati Logo" class="h-10 w-auto object-contain">
       <span class="font-orbitron text-xl font-black tracking-wider text-cyan-400">MONSTERSYNC</span>
     </div>
-    <nav class="hidden lg:flex gap-8 font-orbitron text-[10px] tracking-[0.2em] text-gray-400">
+    <nav class="hidden lg:flex gap-6 font-orbitron text-[9px] tracking-[0.25em] text-gray-400">
       <a href="#progetto" class="hover:text-cyan-400 transition-colors">IL PROGETTO</a>
       <a href="#telemetria" class="hover:text-cyan-400 transition-colors">IMU & PIEGA</a>
-      <a href="#motore" class="hover:text-cyan-400 transition-colors">L-TWIN 2007</a>
+      <a href="#valori" class="hover:text-cyan-400 transition-colors">LOGGER</a>
+      <a href="#motore" class="hover:text-cyan-400 transition-colors">MOTORE</a>
+      <a href="#mockup" class="hover:text-cyan-400 transition-colors">APP HUD</a>
       <a href="#hardware" class="hover:text-cyan-400 transition-colors">HARDWARE</a>
-      <a href="#download" class="hover:text-cyan-400 transition-colors">COMPILAZIONE</a>
+      <a href="#download" class="hover:text-cyan-400 transition-colors">DOWNLOAD</a>
     </nav>
     <a href="https://github.com/Lorenzozero/monster_sync_app" target="_blank" class="flex items-center gap-2 border border-cyan-400/30 hover:border-cyan-400 bg-cyan-950/20 hover:bg-cyan-400 hover:text-black px-4 py-2 rounded-full font-orbitron text-[9px] tracking-wider font-bold transition-all">
       <span>GITHUB REPO</span>
@@ -105,6 +107,79 @@
           <div class="hotspot-annotation">GPS 10Hz Beitian</div>
         </button>
       </model-viewer>
+    </div>
+  </div>
+
+  <!-- HARDWARE TABLE OVERLAY (RIGHT SIDE ON DESKTOP) -->
+  <div id="hardware-table-container" class="fixed top-0 right-0 w-full lg:w-1/2 h-screen z-10 flex items-center justify-center p-6 lg:p-12 opacity-0 pointer-events-none transition-all duration-700 translate-y-10">
+    <div class="w-full max-w-xl bg-neutral-950/90 backdrop-blur-lg border border-cyan-500/20 p-6 lg:p-8 rounded-2xl shadow-[0_0_50px_rgba(0,229,255,0.15)] pointer-events-auto">
+      <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">BILL OF MATERIALS / COSTI</span>
+      <h3 class="font-teko text-4xl font-bold uppercase mt-1 mb-4 text-white">COMPONENTISTICA & ACQUISTI</h3>
+      
+      <div class="overflow-x-auto w-full border border-white/5 rounded-lg mb-4">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-white/10 bg-white/5 font-orbitron text-[9px] tracking-wider text-gray-400">
+              <th class="p-3">Componente</th>
+              <th class="p-3">Utilizzo</th>
+              <th class="p-3 text-right">Prezzo</th>
+              <th class="p-3 text-center">Acquista</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5 text-gray-300">
+            <!-- ESP32 -->
+            <tr>
+              <td class="p-3 font-semibold text-white">ESP32 NodeMCU</td>
+              <td class="p-3 text-[11px] text-gray-400">Microcontrollore & Bluetooth</td>
+              <td class="p-3 text-right font-mono text-cyan-400">€4.50</td>
+              <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-esp32-nodemcu.html" target="_blank" class="text-red-500 hover:text-white underline">Link</a></td>
+            </tr>
+            <!-- MPU-6050 -->
+            <tr>
+              <td class="p-3 font-semibold text-white">MPU-6050 (GY-521)</td>
+              <td class="p-3 text-[11px] text-gray-400">Accelerometro & Giroscopio</td>
+              <td class="p-3 text-right font-mono text-cyan-400">€1.20</td>
+              <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-mpu6050.html" target="_blank" class="text-red-500 hover:text-white underline">Link</a></td>
+            </tr>
+            <!-- Beitian GPS -->
+            <tr>
+              <td class="p-3 font-semibold text-white">Beitian BN-180 GPS</td>
+              <td class="p-3 text-[11px] text-gray-400">Giro GPS 10Hz Alta Velocità</td>
+              <td class="p-3 text-right font-mono text-cyan-400">€9.50</td>
+              <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-beitian-bn180.html" target="_blank" class="text-red-500 hover:text-white underline">Link</a></td>
+            </tr>
+            <!-- PC817 Optoisolatori -->
+            <tr>
+              <td class="p-3 font-semibold text-white">PC817 Optocoupler</td>
+              <td class="p-3 text-[11px] text-gray-400">Isolamento Giri (RPM) 12V-3.3V</td>
+              <td class="p-3 text-right font-mono text-cyan-400">€1.80</td>
+              <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-pc817-4-channel.html" target="_blank" class="text-red-500 hover:text-white underline">Link</a></td>
+            </tr>
+            <!-- LM2596 Step Down -->
+            <tr>
+              <td class="p-3 font-semibold text-white">LM2596 Buck Converter</td>
+              <td class="p-3 text-[11px] text-gray-400">Alimentazione 12V -> 5V</td>
+              <td class="p-3 text-right font-mono text-cyan-400">€1.50</td>
+              <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm2596.html" target="_blank" class="text-red-500 hover:text-white underline">Link</a></td>
+            </tr>
+            <!-- Scatola, Cavi, Fusibile -->
+            <tr>
+              <td class="p-3 font-semibold text-white">Scatola IP65 + Fusibili</td>
+              <td class="p-3 text-[11px] text-gray-400">Impermeabilizzazione e Fusibile 1A</td>
+              <td class="p-3 text-right font-mono text-cyan-400">€3.80</td>
+              <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-waterproof-project-box-small.html" target="_blank" class="text-red-500 hover:text-white underline">Link</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="flex justify-between items-center text-xs font-orbitron border-t border-white/10 pt-4">
+        <span class="text-gray-400">COSTO TOTALE ESTIMATO:</span>
+        <span class="text-cyan-400 font-bold text-base">~ €22.30</span>
+      </div>
+      <p class="text-[9px] text-gray-500 mt-3 leading-normal">
+        * Prezzi indicativi AliExpress. Si consiglia spedizione tracciata "Choice".
+      </p>
     </div>
   </div>
 
@@ -188,6 +263,43 @@
       </div>
     </section>
 
+    <!-- SECTION 2.5: VALORI MONITORATI -->
+    <section id="valori" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+        <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">02.5 / DATA LOGGER</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">PARAMETRI ACQUISITI</h2>
+        <p class="text-gray-400 text-sm mb-6 leading-relaxed">
+          MonsterSync acquisisce costantemente una serie di parametri fisici ed elettrici inviandoli in tempo reale al cruscotto dello smartphone:
+        </p>
+        <div class="grid grid-cols-2 gap-4 text-xs">
+          <div class="bg-black/50 border border-white/5 p-3 rounded-lg">
+            <span class="text-cyan-400 font-bold font-orbitron block text-[9px] tracking-wider">PIEGA REALE (ROLL)</span>
+            <span class="text-white text-[11px] block mt-1">Inclinazione laterale sinistra/destra (in gradi).</span>
+          </div>
+          <div class="bg-black/50 border border-white/5 p-3 rounded-lg">
+            <span class="text-cyan-400 font-bold font-orbitron block text-[9px] tracking-wider">BECCHEGGIO (PITCH)</span>
+            <span class="text-white text-[11px] block mt-1">Angolo longitudinale per telemetria accelerazione/impennata.</span>
+          </div>
+          <div class="bg-black/50 border border-white/5 p-3 rounded-lg">
+            <span class="text-red-500 font-bold font-orbitron block text-[9px] tracking-wider">GIRI MOTORE (RPM)</span>
+            <span class="text-white text-[11px] block mt-1">Giri al minuto prelevati dal segnale iniettore 12V.</span>
+          </div>
+          <div class="bg-black/50 border border-white/5 p-3 rounded-lg">
+            <span class="text-red-500 font-bold font-orbitron block text-[9px] tracking-wider">TEMPERATURA OLIO</span>
+            <span class="text-white text-[11px] block mt-1">Gradi del lubrificante tramite NTC originale Ducati.</span>
+          </div>
+          <div class="bg-black/50 border border-white/5 p-3 rounded-lg">
+            <span class="text-white/60 font-bold font-orbitron block text-[9px] tracking-wider">VELOCITÀ EFFETTIVA</span>
+            <span class="text-white text-[11px] block mt-1">Velocità GPS reale calcolata al decimo di secondo (10Hz).</span>
+          </div>
+          <div class="bg-black/50 border border-white/5 p-3 rounded-lg">
+            <span class="text-white/60 font-bold font-orbitron block text-[9px] tracking-wider">TENSIONE CIRCUITO</span>
+            <span class="text-white text-[11px] block mt-1">Controllo alternatore (punto critico del Monster storico).</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- SECTION 3: MOTORE L-TWIN -->
     <section id="motore" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
       <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
@@ -249,6 +361,70 @@
               <span class="text-xs text-gray-400">Modulo optoisolatore PC817 per leggere in sicurezza i segnali a 12V (iniettore RPM, galleggiante benzina) portandoli a 3.3V protetti. Step-down LM2596 e fusibile da 1A collegati alla linea sotto chiave delle luci posteriori.</span>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4.8: MOCKUPS E VISTE APP -->
+    <section id="mockup" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+        <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">04.8 / PREVIEW UTENTE</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">MOCKUP & FUNZIONALITÀ APP</h2>
+        <p class="text-gray-400 text-sm mb-6 leading-relaxed">
+          Un'interfaccia scura, aggressiva e ad alta leggibilità pensata per l'uso in moto, con elementi grafici fluidi a 60FPS:
+        </p>
+
+        <!-- CSS Phone Mockup -->
+        <div class="relative mx-auto w-[240px] h-[480px] bg-neutral-900 border-[8px] border-neutral-800 rounded-[36px] shadow-2xl overflow-hidden mb-8 border-cyan-500/20">
+          <!-- Notch -->
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-neutral-800 rounded-b-xl z-30"></div>
+          
+          <!-- Mock Screen Content -->
+          <div class="w-full h-full bg-neutral-950 p-4 pt-8 flex flex-col font-sans relative">
+            <div class="flex justify-between items-center border-b border-white/5 pb-2 mb-4">
+              <span class="font-orbitron text-[8px] text-cyan-400 tracking-wider">MONSTERSYNC HUD</span>
+              <div class="w-2 h-2 rounded-full bg-green-500 animate-ping"></div>
+            </div>
+            
+            <!-- CONTROLS SPEED -->
+            <div class="text-center my-2">
+              <div class="text-[9px] text-gray-500 font-orbitron">SPEED GPS</div>
+              <div class="text-4xl font-bold font-orbitron text-white leading-none">124<span class="text-xs text-cyan-400">km/h</span></div>
+            </div>
+            
+            <!-- GAUGE RPM -->
+            <div class="h-20 w-full flex items-center justify-center relative my-2">
+              <div class="w-24 h-24 rounded-full border-4 border-dashed border-red-600/50 flex flex-col items-center justify-center">
+                <span class="text-[8px] text-gray-500 font-orbitron">RPM CONTROLS</span>
+                <span class="text-sm font-bold text-red-500">6.250</span>
+              </div>
+            </div>
+            
+            <!-- MINI LEAN METER -->
+            <div class="bg-white/5 border border-white/10 rounded-xl p-3 flex justify-between items-center mt-auto">
+              <div class="text-center w-1/3">
+                <div class="text-[7px] text-gray-500">LEFT MAX</div>
+                <div class="text-xs font-bold text-cyan-400">-32°</div>
+              </div>
+              <div class="w-1/3 h-1 bg-neutral-800 rounded-full relative overflow-hidden">
+                <div class="absolute left-1/2 -translate-x-1/2 w-1.5 h-full bg-cyan-400"></div>
+              </div>
+              <div class="text-center w-1/3">
+                <div class="text-[7px] text-gray-500">RIGHT MAX</div>
+                <div class="text-xs font-bold text-red-500">+38°</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- App Features detail -->
+        <div class="bg-black/60 border border-white/5 p-4 rounded-xl space-y-3">
+          <span class="text-xs font-orbitron tracking-wider text-cyan-400 block font-bold">VISTE PRINCIPALI DELL'APP:</span>
+          <p class="text-xs text-gray-300">
+            <strong>1. Cruscotto (HUD)</strong>: Dashboard circolare a led cyberpunk con calcolo marcia inserita e contatori angoli.<br>
+            <strong>2. Mappa Termica Pieghe</strong>: Heatmap dei percorsi che colora in ciano le curve lente ed in rosso le curve ad alta piega.<br>
+            <strong>3. Registro Giri</strong>: Storico con esportazione tracciati in formato standard GPX.
+          </p>
         </div>
       </div>
     </section>
