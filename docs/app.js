@@ -470,16 +470,16 @@ function initAudioInteractionListeners() {
     if (!engineRoarPlayed) {
       playDesmoEngineRoar();
     }
-    // Rimuove gli ascoltatori una volta avvenuta la prima interazione
-    document.removeEventListener('click', triggerRoar);
-    document.removeEventListener('touchstart', triggerRoar);
-    document.removeEventListener('scroll', triggerRoar);
-    document.removeEventListener('keydown', triggerRoar);
+    // Rimuove gli ascoltatori solo se il suono è effettivamente partito
+    if (engineRoarPlayed) {
+      document.removeEventListener('click', triggerRoar);
+      document.removeEventListener('touchstart', triggerRoar);
+      document.removeEventListener('keydown', triggerRoar);
+    }
   };
 
   document.addEventListener('click', triggerRoar, { passive: true });
   document.addEventListener('touchstart', triggerRoar, { passive: true });
-  document.addEventListener('scroll', triggerRoar, { passive: true });
   document.addEventListener('keydown', triggerRoar, { passive: true });
 }
 
