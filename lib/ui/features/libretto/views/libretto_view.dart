@@ -337,8 +337,16 @@ class _LibrettoViewState extends State<LibrettoView>
   }
 
   Future<void> _checkAndSendNotification(Future<void> Function() send) async {
-    final enabled = await NotificationService.instance.areNotificationsEnabled();
-    if (!enabled) {
+    // 1. Richiedi o verifica il permesso a runtime
+    var status = await Permission.notification.status;
+    if (status.isDenied) {
+      status = await Permission.notification.request();
+    }
+
+    // 2. Verifica se le notifiche sono abilitate a livello globale nel sistema operativo
+    final systemEnabled = await NotificationService.instance.areNotificationsEnabled();
+
+    if (!status.isGranted || !systemEnabled) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
