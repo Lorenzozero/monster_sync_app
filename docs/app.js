@@ -445,18 +445,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const loaderScreen = document.getElementById("loader-screen");
   const audioPrompt = document.getElementById("audio-prompt");
 
-  // Sblocco preventivo dell'AudioContext al tocco/click durante il caricamento
+  // Sblocco preventivo dell'AudioContext al primo tocco, click o scorrimento
   const unlockAudio = () => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) {
       const tempCtx = new AudioContextClass();
       tempCtx.resume().then(() => {
         tempCtx.close();
+        if (!engineRoarPlayed) {
+          playDesmoEngineRoar();
+        }
       });
     }
 
     if (audioPrompt) {
-      audioPrompt.innerText = "AUDIO ABILITATO (PRONTO)";
+      audioPrompt.innerText = "AUDIO ABILITATO";
       audioPrompt.classList.remove("text-cyan-400", "animate-pulse");
       audioPrompt.classList.add("text-green-400", "border-green-500/30");
       setTimeout(() => {
@@ -466,12 +469,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.removeEventListener('click', unlockAudio);
     document.removeEventListener('touchstart', unlockAudio);
+    document.removeEventListener('scroll', unlockAudio);
+    document.removeEventListener('wheel', unlockAudio);
   };
 
   document.addEventListener('click', unlockAudio);
   document.addEventListener('touchstart', unlockAudio);
+  document.addEventListener('scroll', unlockAudio);
+  document.addEventListener('wheel', unlockAudio);
 
   let progress = 0;
+  // Prova ad avviare la sintesi immediatamente all'avvio (se sbloccato precedentemente o consentito)
+  playDesmoEngineRoar();
   const statusTexts = [
     "DIAGNOSTICA MPU-6050...",
     "SINCRONIZZAZIONE REGOLATORE TENSIONE...",
@@ -527,12 +536,16 @@ function initAudioInteractionListeners() {
       document.removeEventListener('click', triggerRoar);
       document.removeEventListener('touchstart', triggerRoar);
       document.removeEventListener('keydown', triggerRoar);
+      document.removeEventListener('scroll', triggerRoar);
+      document.removeEventListener('wheel', triggerRoar);
     }
   };
 
   document.addEventListener('click', triggerRoar, { passive: true });
   document.addEventListener('touchstart', triggerRoar, { passive: true });
   document.addEventListener('keydown', triggerRoar, { passive: true });
+  document.addEventListener('scroll', triggerRoar, { passive: true });
+  document.addEventListener('wheel', triggerRoar, { passive: true });
 }
 
 initAudioInteractionListeners();
