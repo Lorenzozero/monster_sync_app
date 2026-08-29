@@ -220,9 +220,9 @@ class _LibrettoViewState extends State<LibrettoView>
     _prefs = await SharedPreferences.getInstance();
     _totalKm = await DbHelper().getTotalKm();
     
-    // Verifica lo stato reale dei permessi nel sistema operativo
-    final status = await Permission.notification.status;
-    _notificationsEnabled = status.isGranted;
+    // Verifica lo stato reale dei permessi nel sistema operativo usando il plugin direttamente
+    final enabled = await NotificationService.instance.areNotificationsEnabled();
+    _notificationsEnabled = enabled;
 
     // Carica scadenze salvate
     _revisioneUltimo = _prefs?.getString('scad_revisione_ultimo') ?? '26.09.2024';
@@ -336,14 +336,48 @@ class _LibrettoViewState extends State<LibrettoView>
     }
   }
 
+  Future<void> _checkAndSendNotification(Future<void> Function() send) async {
+    final enabled = await NotificationService.instance.areNotificationsEnabled();
+    if (!enabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('⚠️ Notifiche disattivate nel sistema. Attivale nelle impostazioni!'),
+            backgroundColor: AppTheme.alertRed,
+            action: SnackBarAction(
+              label: 'IMPOSTAZIONI',
+              textColor: Colors.white,
+              onPressed: () => openAppSettings(),
+            ),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+      setState(() => _notificationsEnabled = false);
+      return;
+    }
+    setState(() => _notificationsEnabled = true);
+    await send();
+  }
+
   Future<void> _testNotification(_ManutItem item) async {
-    if (!_notificationsEnabled) return;
-    final now = DateTime.now();
-    final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-    await NotificationService.instance.sendManutenzioneNotification(
-      id: item.notifId + 100,
-      title: '${item.label.toUpperCase()} $dateStr',
-    );
+    await _checkAndSendNotification(() async {
+      final now = DateTime.now();
+      final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+      await NotificationService.instance.sendManutenzioneNotification(
+        id: item.notifId + 100,
+        title: '${item.label.toUpperCase()} $dateStr',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🔧 Notifica manutenzione inviata!'),
+            backgroundColor: AppTheme.activeCyan,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _toggleNotifications(bool value) async {
@@ -372,23 +406,24 @@ class _LibrettoViewState extends State<LibrettoView>
   }
 
   Future<void> _testLegaleNotification(String type) async {
-    if (!_notificationsEnabled) return;
-    final isBollo = type == 'BOLLO';
-    final scadenzaDot = isBollo ? _bolloScadenza : _rcaScadenza;
-    final scadenza = scadenzaDot.replaceAll('.', '/');
-    await NotificationService.instance.sendScadenzaNotification(
-      id: isBollo ? 201 : 202,
-      title: isBollo ? 'SCADENZA BOLLO MOTO $scadenza' : 'SCADENZA ASSICURAZIONE RCA $scadenza',
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('📲 Notifica inviata — controlla la tendina!'),
-          backgroundColor: AppTheme.activeCyan,
-          duration: Duration(seconds: 3),
-        ),
+    await _checkAndSendNotification(() async {
+      final isBollo = type == 'BOLLO';
+      final scadenzaDot = isBollo ? _bolloScadenza : _rcaScadenza;
+      final scadenza = scadenzaDot.replaceAll('.', '/');
+      await NotificationService.instance.sendScadenzaNotification(
+        id: isBollo ? 201 : 202,
+        title: isBollo ? 'SCADENZA BOLLO MOTO $scadenza' : 'SCADENZA ASSICURAZIONE RCA $scadenza',
       );
-    }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📲 Notifica inviata — controlla la tendina!'),
+            backgroundColor: AppTheme.activeCyan,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
   }
 
   // ── Date Picker Helper ────────────────────────────────────────────────────
@@ -730,22 +765,21 @@ class _LibrettoViewState extends State<LibrettoView>
         ],
         const SizedBox(height: 10),
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          if (_notificationsEnabled)
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white38,
-                side: const BorderSide(color: Colors.white12),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                minimumSize: const Size(0, 28),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              icon: const Icon(Icons.notifications_none, size: 13),
-              label: Text('TEST',
-                  style: AppTheme.orbitronLabel
-                      .copyWith(fontSize: 8, color: Colors.white38)),
-              onPressed: () => _testNotification(item),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white38,
+              side: const BorderSide(color: Colors.white12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: const Size(0, 28),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
+            icon: const Icon(Icons.notifications_none, size: 13),
+            label: Text('TEST',
+                style: AppTheme.orbitronLabel
+                    .copyWith(fontSize: 8, color: Colors.white38)),
+            onPressed: () => _testNotification(item),
+          ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
@@ -869,9 +903,7 @@ class _LibrettoViewState extends State<LibrettoView>
             minimumSize: const Size(56, 28),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          onPressed: _notificationsEnabled
-              ? () => _testLegaleNotification(type)
-              : null,
+          onPressed: () => _testLegaleNotification(type),
           child: Text('TEST',
               style: AppTheme.orbitronLabel
                   .copyWith(fontSize: 9, color: AppTheme.activeCyan)),

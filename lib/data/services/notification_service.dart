@@ -122,6 +122,21 @@ class NotificationService {
     _initialized = true;
   }
 
+  // ── VERIFICA STATO PERMESSI SISTEMA OPERATIVO ─────────────────────────────
+  Future<bool> areNotificationsEnabled() async {
+    try {
+      final bool? enabled = await _plugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.areNotificationsEnabled();
+      return enabled ?? false;
+    } catch (e) {
+      debugPrint("Errore verifica areNotificationsEnabled: $e. Uso fallback Permission.");
+      final status = await Permission.notification.status;
+      return status.isGranted;
+    }
+  }
+
   // ── PERMESSO RUNTIME (per chiamata esplicita) ─────────────────────────────
   Future<bool> requestPermission() async {
     // Richiede su Android e iOS
