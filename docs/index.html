@@ -86,7 +86,6 @@
         auto-rotate="false"
         interaction-prompt="none"
         camera-orbit="165deg 75deg 70%"
-        camera-target="0m 0.45m 0m"
         interpolation-decay="200"
         power-preference="high-performance"
         exposure="1.1"
@@ -97,16 +96,16 @@
         ar
         ar-modes="webxr scene-viewer quick-look"
         ar-scale="fixed"
-        class="w-full h-[70vh] lg:h-[85vh] bg-transparent outline-none pointer-events-auto transition-opacity duration-500"
+        class="w-full h-full bg-transparent outline-none pointer-events-auto transition-opacity duration-500"
       >
         <!-- Hotspots per spiegazione cinematiche -->
-        <button class="hotspot" slot="hotspot-imu" data-position="-0.02 0.52 0.05" data-normal="0 0 1">
+        <button class="hotspot" slot="hotspot-imu" data-position="0.0 0.72 0.28" data-normal="0 0 1">
           <div class="hotspot-annotation">ESP32 + MPU-6050</div>
         </button>
-        <button class="hotspot" slot="hotspot-engine" data-position="0.0 0.42 0.15" data-normal="0 1 0">
+        <button class="hotspot" slot="hotspot-engine" data-position="0.0 0.32 0.0" data-normal="0 1 0">
           <div class="hotspot-annotation">Motore Desmodue</div>
         </button>
-        <button class="hotspot" slot="hotspot-gps" data-position="0.0 0.88 0.4" data-normal="0 1 0">
+        <button class="hotspot" slot="hotspot-gps" data-position="0.0 0.52 -0.45" data-normal="0 0 -1">
           <div class="hotspot-annotation">GPS 10Hz Beitian</div>
         </button>
       </model-viewer>
