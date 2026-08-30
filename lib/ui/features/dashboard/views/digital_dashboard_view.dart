@@ -292,25 +292,30 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               initialRotation: 15.0, // Rotazione per simulare la direzione di marcia (heading)
               minZoom: 14.0,
               maxZoom: 18.0,
+              // Colore sotto le tile: copre i bordi che la rotazione di 15°
+              // lascerebbe scoperti, invece del nero pieno.
+              backgroundColor: const Color(0xFF12151A),
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.none, // Mappa bloccata sul rider come Waze in navigazione
               ),
             ),
             children: [
-              // Mappa Dark Cyberpunk (OSM Gratuita + ColorFiltered per inversione/tonalità ciano senza watermark)
-              ColorFiltered(
-                colorFilter: const ColorFilter.matrix([
-                  -1.0,  0.0,  0.0, 0.0, 255,
-                   0.0, -1.0,  0.0, 0.0, 255,
-                   0.0,  0.0, -0.8, 0.0, 200,
-                   0.0,  0.0,  0.0, 1.0, 0,
-                ]),
-                child: TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.monster_sync_app',
-                ),
+              // Cartografia già scura (CartoDB Dark Matter, gratuita e senza API key).
+              // Prima si invertiva la mappa chiara di OSM con una ColorFilter.matrix:
+              // il risultato era viola e con le strade illeggibili. Una basemap nata
+              // scura ha strade chiare su fondo scuro, che è esattamente ciò che serve
+              // di notte in moto.
+              TileLayer(
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
+                userAgentPackageName: 'com.example.monster_sync_app',
+                // Con la mappa ruotata servono tile oltre il bordo visibile,
+                // altrimenti agli angoli resta il fondo scoperto.
+                panBuffer: 2,
+                keepBuffer: 5,
               ),
-              
+
               // Polilinee di Navigazione (Rotta)
               if (_navigationActive)
                 PolylineLayer(
@@ -460,7 +465,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           Positioned(
             left: 12,
             bottom: 12,
-            top: 60,
             child: Container(
               width: 170,
               padding: const EdgeInsets.all(12),
@@ -471,7 +475,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // La marcia non sta piu' qui: e' sulla barra verticale a destra,
                   // dove il pollice la trova senza spostare lo sguardo dalla strada.
@@ -503,15 +507,38 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  // Serbatoio spostato in alto a destra, accanto alla barra marce.
+                  // Comune e avviso pioggia spostati sotto i gradi, nel chip meteo
+                  // in basso a destra: tutto il meteo in un posto solo.
+                ],
+              ),
+            ),
+          ),
 
-                  // Serbatoio (visual fuel bars)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          // ── SERBATOIO (in alto a destra, a fianco della barra delle marce) ──
+          Positioned(
+            top: 12,
+            right: 60, // 48 della barra marce + margine
+            width: 150,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          const Icon(Icons.local_gas_station,
+                              color: Colors.amber, size: 13),
+                          const SizedBox(width: 5),
                           Text(
                             "SERBATOIO",
                             style: GoogleFonts.orbitron(
@@ -519,40 +546,55 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                               color: AppTheme.textMuted,
                             ),
                           ),
-                          Text(
-                            "${(telemetry.fuelBars / 7 * 100).toInt()}%",
-                            style: GoogleFonts.orbitron(
-                              fontSize: 8,
-                              color: AppTheme.activeCyan,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      // Serbatoio a barre neon
-                      Row(
-                        children: List.generate(7, (index) {
-                          final isActive = index < telemetry.fuelBars;
-                          return Expanded(
-                            child: Container(
-                              height: 6,
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? (telemetry.fuelBars <= 2 ? AppTheme.alertRed : AppTheme.activeCyan)
-                                    : Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          );
-                        }),
+                      Text(
+                        "${(telemetry.fuelBars / 7 * 100).toInt()}%",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 9,
+                          color: telemetry.fuelBars <= 2
+                              ? AppTheme.alertRed
+                              : AppTheme.activeCyan,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-                  // Comune e avviso pioggia spostati sotto i gradi, nel chip meteo
-                  // in basso a destra: tutto il meteo in un posto solo.
+                  const SizedBox(height: 6),
+                  // Barre neon
+                  Row(
+                    children: List.generate(7, (index) {
+                      final isActive = index < telemetry.fuelBars;
+                      return Expanded(
+                        child: Container(
+                          height: 7,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? (telemetry.fuelBars <= 2
+                                    ? AppTheme.alertRed
+                                    : AppTheme.activeCyan)
+                                : Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
                 ],
+              ),
+            ),
+          ),
+
+          // Attribuzione cartografica: piccola ma dovuta (OSM/CARTO)
+          Positioned(
+            left: 16,
+            top: 6,
+            child: Text(
+              "© OpenStreetMap · CARTO",
+              style: GoogleFonts.orbitron(
+                fontSize: 6,
+                color: Colors.white.withOpacity(0.35),
               ),
             ),
           ),

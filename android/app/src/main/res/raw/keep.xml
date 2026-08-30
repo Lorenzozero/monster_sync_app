@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ic_notification viene richiesta a runtime per NOME, come stringa
+  ('ic_notification' in notification_service.dart), quindi il resource shrinker
+  di R8 non vede nessun riferimento e la elimina dalla release.
+  Il sintomo e' PlatformException(invalid_icon, The resource ic_notification
+  could not be found...) SOLO in release: in debug lo shrinker non gira.
+  La prova sta in build/app/outputs/mapping/release/resources.txt:
+      drawable:ic_notification:... is not reachable.
+  Questo file dice allo shrinker di tenerla. Non rimuoverlo.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />
