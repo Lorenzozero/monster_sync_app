@@ -9,10 +9,10 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:monster_sync_app/data/services/weather_service.dart';
+import 'package:monster_sync_app/data/services/navigation_service.dart';
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -213,15 +213,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     }
   }
 
-  // Controlla se la rete internet è attiva
-  Future<bool> _isNetworkAvailable() async {
-    try {
-      final result = await InternetAddress.lookup('dns.google').timeout(const Duration(seconds: 1));
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (_) {
-      return false;
-    }
-  }
 
   // Elabora il comando vocale dell'utente
   void _processVoiceCommand(String command) async {
@@ -236,44 +227,35 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         _assistantText = "Comando ricevuto: '$command'";
       });
 
-      // Controlla disponibilità rete
-      final hasNet = await _isNetworkAvailable();
+      // Sceglie il navigatore migliore disponibile: OsmAnd (offline, con
+      // limiti e autovelox) > Waze (solo con rete) > mappa interna.
+      final nav = await NavigationService.instance.navigateTo(
+        _gasStationLocation.latitude,
+        _gasStationLocation.longitude,
+        name: 'Distributore IP',
+        fromLat: _myLocation.latitude,
+        fromLon: _myLocation.longitude,
+      );
 
-      if (hasNet) {
-        // Se c'è rete, usa Waze
-        final wazeUrl = Uri.parse("waze://?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
-        final webUrl = Uri.parse("https://waze.com/ul?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
-        
-        await _tts.speak("Rete rilevata. Avvio navigazione su Waze verso il distributore.");
-        
-        if (await canLaunchUrl(wazeUrl)) {
-          await launchUrl(wazeUrl);
-        } else {
-          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-        }
-      } else {
-        // Nessuna rete -> usa mappa offline
+      if (nav.target == NavigationTarget.internal) {
+        // Nessun navigatore: almeno disegna la rotta sulla mappa dell'app
         setState(() {
           _navigationActive = true;
-          // Traccia la rotta verso il distributore IP
           _routePoints = [
             _myLocation,
             const LatLng(43.9980, 11.6450), // Passa dall'autovelox
             _gasStationLocation,
           ];
         });
-
-        // Annuncia il risultato tramite sintesi vocale (TTS)
-        await _tts.speak(
-          "Nessuna rete. Avvio navigazione offline sulla mappa locale con allerta autovelox attiva sulla rotta."
-        );
-
-        // Centra e zooma la mappa per mostrare la rotta
-        _mapController.move(LatLng(
-          (_myLocation.latitude + _gasStationLocation.latitude) / 2,
-          (_myLocation.longitude + _gasStationLocation.longitude) / 2,
-        ), 14.5);
+        _mapController.move(
+            LatLng(
+              (_myLocation.latitude + _gasStationLocation.latitude) / 2,
+              (_myLocation.longitude + _gasStationLocation.longitude) / 2,
+            ),
+            14.5);
       }
+
+      await _tts.speak(nav.spokenMessage);
     } else {
       setState(() {
         _isListening = false;
@@ -742,15 +724,18 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ),
                   const SizedBox(width: 10),
  
-                  // Pulsante Navigazione Waze Rapido
+                  // Navigazione rapida: OsmAnd se c'è, altrimenti Waze
                   GestureDetector(
                     onTap: () async {
-                      final wazeUrl = Uri.parse("waze://?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
-                      final webUrl = Uri.parse("https://waze.com/ul?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
-                      if (await canLaunchUrl(wazeUrl)) {
-                        await launchUrl(wazeUrl);
-                      } else {
-                        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+                      final nav = await NavigationService.instance.navigateTo(
+                        _gasStationLocation.latitude,
+                        _gasStationLocation.longitude,
+                        name: 'Distributore IP',
+                        fromLat: _myLocation.latitude,
+                        fromLon: _myLocation.longitude,
+                      );
+                      if (nav.target == NavigationTarget.internal) {
+                        await _tts.speak(nav.spokenMessage);
                       }
                     },
                     child: Container(

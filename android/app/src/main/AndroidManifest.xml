@@ -24,6 +24,25 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+
+        <!-- Da Android 11 canLaunchUrl() risponde false per qualunque schema
+             non dichiarato qui, anche se l'app e' installata: senza queste
+             righe il deep link cadeva sempre sul fallback web. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="waze" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="osmand.api" />
+        </intent>
+        <!-- OsmAnd: versione gratuita e versione+ -->
+        <package android:name="net.osmand" />
+        <package android:name="net.osmand.plus" />
     </queries>
     <application
         android:label="MonsterSync"
