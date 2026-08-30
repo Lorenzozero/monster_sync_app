@@ -138,7 +138,7 @@
           Chi ha bisogno di telemetrie professionali da 800€ quando puoi isolare la linea dell'iniettore desmodromico con un fotoaccoppiatore da meno di due euro? 
         </p>
         <p class="text-gray-500 text-xs leading-relaxed italic border-l-2 border-red-500/30 pl-3">
-          Ecco la ricetta per monitorare la tua moto con il budget di una pizza. Nota bene: nastro isolante, fascette in plastica da elettricista, brugole da 5 smarrite nel carter e le imprecazioni per fare spazio nel sottosella non sono incluse nella confezione.
+          Ecco la ricetta per monitorare la tua moto con il budget di due pizze. Nota bene: nastro isolante, fascette in plastica da elettricista, brugole da 5 smarrite nel carter e le imprecazioni per fare spazio nel sottosella non sono incluse nella confezione. Le voci in rosso invece sì: sono quelle che, se le salti, fondono un componente o ti lasciano a piedi con una lettura sbagliata.
         </p>
       </div>
 
@@ -155,58 +155,99 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5 text-gray-300">
-              <!-- ESP32 -->
+              <!-- ESP32-S3 -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">ESP32 NodeMCU</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Microcontrollore & Bluetooth</td>
-                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€4.50</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-esp32-nodemcu.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">ESP32-S3 DevKitC-1</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Cervello e BLE. <span class="text-red-400">Dev'essere un S3</span>: pin e firmware sono tarati su questo</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€9.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-esp32-s3-devkitc.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- MPU-6050 -->
               <tr>
                 <td class="p-1.5 sm:p-3 font-semibold text-white">MPU-6050 (GY-521)</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Accelerometro & Giroscopio</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Accelerometro e giroscopio per l'angolo di piega</td>
                 <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.20</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-mpu6050.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-mpu6050.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- Beitian GPS -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">Beitian BN-180 GPS</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">GPS 10Hz & calcolo marce live</td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Beitian BN-220 GPS</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Velocità reale e traccia. <span class="text-red-400">Esce a 9600 baud e 1 Hz</span>: va portato a 115200 e 10 Hz con u-center</td>
                 <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€9.50</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-beitian-bn180.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-beitian-bn220.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- PC817 Optoisolatori -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">PC817 Optocoupler</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Isolamento segnale giri (RPM) e riserva</td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">PC817 (4 canali)</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Isola i 12V della moto: impulsi iniettore (RPM) e spia riserva</td>
                 <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.80</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-pc817-4-channel.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-pc817-4-channel.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
-              <!-- LM2596 Step Down -->
+              <!-- 1N4148 -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">LM2596 Buck Converter</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Alimentazione 12V -> 5V</td>
-                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.50</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm2596.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Diodi 1N4148</td>
+                <td class="p-1.5 sm:p-3 text-gray-400"><span class="text-red-400">Obbligatori</span>, in antiparallelo al LED di ogni opto sull'iniettore: il PC817 regge 6V inversi, il flyback ne fa 60-100</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-1n4148.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+              </tr>
+              <!-- Buck automotive -->
+              <tr>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Buck 12V→5V automotive</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">LM5164 (65V). <span class="text-red-400">L'LM2596 regge 40V e non ha protezione da load dump</span>: sui Monster il regolatore che cede li supera</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€12.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm5164.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+              </tr>
+              <!-- Protezioni -->
+              <tr>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">TVS SMAJ33A + MOSFET P</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Sovratensioni e inversione di polarità. Indispensabili se scegli l'LM2596 al posto dell'LM5164</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€2.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-smaj33a.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- Scatola, Cavi, Fusibile -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">Scatola IP65 + Fusibili</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Impermeabilizzazione e Fusibile 1A</td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Scatola IP65 + fusibile 1A</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Il sottosella di un Monster si allaga. Portafusibile volante sulla linea sotto chiave</td>
                 <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€3.80</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-waterproof-project-box-small.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-waterproof-project-box-small.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+              </tr>
+              <!-- Cablaggio -->
+              <tr>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Cablaggio e minuteria</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">La voce che tutti dimenticano: connettori con ritenuta (niente dupont sulla moto), fuse tap, guaina, resistenze 1k/10k, millefori</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€12.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-automotive-connector-kit-waterproof.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+              </tr>
+              <!-- Antivibrante -->
+              <tr>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Supporto antivibrante IMU</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Sorbothane o gommini in silicone: montata rigida su un bicilindrico, l'IMU falsa i dati e si spacca alle saldature</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€3.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-anti-vibration-damper-silicone-mount.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
             </tbody>
           </table>
         </div>
-        
+
         <div class="flex justify-between items-center text-xs font-orbitron border-t border-white/10 pt-4">
-          <span class="text-gray-400">COSTO TOTALE ESTIMATO:</span>
-          <span class="text-cyan-400 font-bold text-base">~ €22.30</span>
+          <span class="text-gray-400">COSTO TOTALE STIMATO:</span>
+          <span class="text-cyan-400 font-bold text-base">~ €55</span>
         </div>
+
+        <div class="mt-4 border border-cyan-500/20 bg-cyan-950/20 rounded-lg p-3">
+          <p class="text-[9px] text-gray-400 leading-relaxed">
+            <span class="font-orbitron text-[8px] text-cyan-400 tracking-wider">OPZIONALI</span><br>
+            <strong class="text-white">ICM-42688-P</strong> (~€15) al posto dell'MPU-6050: basso rumore e filtro anti-alias interno, la scelta giusta se la telemetria deve essere seria. &nbsp;·&nbsp;
+            <strong class="text-white">Due resistenze</strong> (~€0.20) per leggere la tensione batteria. &nbsp;·&nbsp;
+            <strong class="text-white">NTC</strong> per la temperatura — oppure niente: la testa <em>ha già</em> un sensore che alimenta la ECU, si legge in parallelo con un buffer ad alta impedenza.
+          </p>
+        </div>
+
         <p class="text-[9px] text-gray-500 mt-3 leading-normal text-left">
-          * Prezzi indicativi AliExpress. Si consiglia spedizione tracciata "Choice".
+          * Prezzi indicativi AliExpress, spedizione tracciata "Choice" consigliata. I link sono
+          ricerche, non prodotti singoli: i venditori cambiano, le sigle no.<br>
+          * Il pressostato olio originale non si rimuove mai, l'alimentazione si prende
+          <strong>sotto chiave</strong> e ogni derivazione dev'essere reversibile.
         </p>
       </div>
 
