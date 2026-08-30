@@ -150,14 +150,28 @@ const List<_ManutItem> _maintenanceItems = [
     notifId: 311,
   ),
   _ManutItem(
+    key: 'cinghie_distribuzione',
+    label: 'Cinghie Distribuzione',
+    icon: '⚠️',
+    intervalDays: 730,
+    intervalKm: 20000,
+    note: 'LA VOCE PIÙ IMPORTANTE. Il Desmodue ha cinghie dentate, non una catena: '
+        'scadono nel TEMPO prima che nei km, perché la gomma invecchia anche a moto ferma. '
+        'Se cedono, le valvole toccano i pistoni e il motore è da rifare. '
+        'Verifica l\'intervallo esatto sul libretto di uso e manutenzione.',
+    notifId: 315,
+  ),
+  _ManutItem(
     key: 'valvole',
-    label: 'Gioco Valvole',
+    label: 'Gioco Valvole (Desmo)',
     icon: '🔧',
     intervalDays: 730,
     intervalKm: 15000,
     note: 'Gioco aspirazione: 0.10–0.15 mm  •  Scarico: 0.15–0.20 mm. '
-        'Operazione da officina specializzata. La Monster 695 ha 2 valvole/cilindro '
-        '(no Desmo — quella è la famiglia L-twin con distribuzione desmodromica).',
+        'La Monster 695 è un DESMODUE: 2 valvole per cilindro con distribuzione '
+        'desmodromica, cioè comandate in apertura E in chiusura, senza molle di richiamo. '
+        'Per questo la registrazione è un lavoro da officina specializzata Ducati, '
+        'non un controllo qualsiasi.',
     notifId: 312,
   ),
   _ManutItem(
@@ -340,70 +354,6 @@ class _LibrettoViewState extends State<LibrettoView>
     }
   }
 
-  Future<void> _checkAndSendNotification(Future<void> Function() send) async {
-    // 1. Richiedi o verifica il permesso a runtime
-    var status = await Permission.notification.status;
-    if (status.isDenied) {
-      status = await Permission.notification.request();
-    }
-
-    // 2. Verifica se le notifiche sono abilitate a livello globale nel sistema operativo
-    final systemEnabled = await NotificationService.instance.areNotificationsEnabled();
-
-    if (!status.isGranted || !systemEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('⚠️ Notifiche disattivate nel sistema. Attivale nelle impostazioni!'),
-            backgroundColor: AppTheme.alertRed,
-            action: SnackBarAction(
-              label: 'IMPOSTAZIONI',
-              textColor: Colors.white,
-              onPressed: () => openAppSettings(),
-            ),
-            duration: const Duration(seconds: 6),
-          ),
-        );
-      }
-      setState(() => _notificationsEnabled = false);
-      return;
-    }
-    setState(() => _notificationsEnabled = true);
-    try {
-      await send();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Errore notifica: $e'),
-            backgroundColor: AppTheme.alertRed,
-            duration: const Duration(seconds: 8),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _testNotification(_ManutItem item) async {
-    await _checkAndSendNotification(() async {
-      final now = DateTime.now();
-      final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-      await NotificationService.instance.sendManutenzioneNotification(
-        id: item.notifId + 100,
-        title: '${item.label.toUpperCase()} $dateStr',
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🔧 Notifica manutenzione inviata!'),
-            backgroundColor: AppTheme.activeCyan,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    });
-  }
-
   Future<void> _toggleNotifications(bool value) async {
     if (value) {
       final granted = await NotificationService.instance.requestPermission();
@@ -427,27 +377,6 @@ class _LibrettoViewState extends State<LibrettoView>
       }
     }
     setState(() => _notificationsEnabled = value);
-  }
-
-  Future<void> _testLegaleNotification(String type) async {
-    await _checkAndSendNotification(() async {
-      final isBollo = type == 'BOLLO';
-      final scadenzaDot = isBollo ? _bolloScadenza : _rcaScadenza;
-      final scadenza = scadenzaDot.replaceAll('.', '/');
-      await NotificationService.instance.sendScadenzaNotification(
-        id: isBollo ? 201 : 202,
-        title: isBollo ? 'SCADENZA BOLLO MOTO $scadenza' : 'SCADENZA ASSICURAZIONE RCA $scadenza',
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('📲 Notifica inviata — controlla la tendina!'),
-            backgroundColor: AppTheme.activeCyan,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    });
   }
 
   // ── Date Picker Helper ────────────────────────────────────────────────────
@@ -877,22 +806,6 @@ class _LibrettoViewState extends State<LibrettoView>
         ],
         const SizedBox(height: 10),
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white38,
-              side: const BorderSide(color: Colors.white12),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: const Size(0, 28),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            icon: const Icon(Icons.notifications_none, size: 13),
-            label: Text('TEST',
-                style: AppTheme.orbitronLabel
-                    .copyWith(fontSize: 8, color: Colors.white38)),
-            onPressed: () => _testNotification(item),
-          ),
-          const SizedBox(width: 8),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.activeCyan.withValues(alpha: 0.12),
@@ -1006,19 +919,5 @@ class _LibrettoViewState extends State<LibrettoView>
               style: AppTheme.interBody
                   .copyWith(fontWeight: FontWeight.bold, fontSize: 12.5)),
         ]),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.activeCyan.withValues(alpha: 0.08),
-            foregroundColor: AppTheme.activeCyan,
-            side: const BorderSide(color: AppTheme.activeCyan, width: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            minimumSize: const Size(56, 28),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          onPressed: () => _testLegaleNotification(type),
-          child: Text('TEST',
-              style: AppTheme.orbitronLabel
-                  .copyWith(fontSize: 9, color: AppTheme.activeCyan)),
-        ),
       ]);
 }
