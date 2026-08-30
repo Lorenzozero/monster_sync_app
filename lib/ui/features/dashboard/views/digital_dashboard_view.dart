@@ -473,28 +473,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Marcia
-                  Row(
-                    children: [
-                      // Icona ingranaggio/cambio marcia + numero
-                      Icon(
-                        Icons.change_circle_outlined,
-                        color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _currentGear == 0 ? "N" : "$_currentGear",
-                        style: GoogleFonts.teko(
-                          fontSize: 54,
-                          fontWeight: FontWeight.bold,
-                          color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
-                          height: 0.9,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white10),
+                  // La marcia non sta piu' qui: e' sulla barra verticale a destra,
+                  // dove il pollice la trova senza spostare lo sguardo dalla strada.
 
                   // Autonomia
                   Row(
@@ -570,38 +550,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white10),
-
-                  // Meteo dettagliato: paese + avviso pioggia
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 14),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "S. GODENZO (FI)",
-                              style: GoogleFonts.orbitron(
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              "PIOGGIA TRA 15 MIN ⚠️",
-                              style: GoogleFonts.orbitron(
-                                fontSize: 7,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.alertRed,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Comune e avviso pioggia spostati sotto i gradi, nel chip meteo
+                  // in basso a destra: tutto il meteo in un posto solo.
                 ],
               ),
             ),
@@ -741,17 +691,51 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
-                    child: Row(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 14),
-                        const SizedBox(width: 4),
+                        // Gradi
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              "22°C",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        // Comune, sotto i gradi
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 11),
+                            const SizedBox(width: 3),
+                            Text(
+                              "S. GODENZO (FI)",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 7,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        // Avviso pioggia
                         Text(
-                          "22°C",
+                          "PIOGGIA TRA 15 MIN ⚠️",
                           style: GoogleFonts.orbitron(
-                            fontSize: 9,
+                            fontSize: 7,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppTheme.alertRed,
                           ),
                         ),
                       ],

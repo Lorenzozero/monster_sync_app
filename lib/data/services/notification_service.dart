@@ -28,10 +28,22 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    // 1. Impostazioni init per piattaforma usando l'icona silhouette per la status bar
+    // 1. Icona della status bar.
+    //
+    // ATTENZIONE, è il bug che è già tornato due volte: il plugin risolve
+    // l'icona con getIdentifier(name, "drawable", package), quindi guarda
+    // SOLO in res/drawable-*. `@mipmap/ic_launcher` non viene trovato anche
+    // se il file esiste davvero in res/mipmap-* — e l'errore che ottieni è
+    // PlatformException(invalid_icon, ... could not be found. Please make sure
+    // it has been added as a drawable resource ...).
+    //
+    // L'unica risorsa valida qui è `ic_notification`, presente come PNG in
+    // tutte le densità drawable-*. Niente prefisso `@drawable/`, solo il nome.
+    const String androidIcon = 'ic_notification';
+
     try {
       const AndroidInitializationSettings androidInit =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+          AndroidInitializationSettings(androidIcon);
 
       const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -46,30 +58,17 @@ class NotificationService {
         const InitializationSettings(android: androidInit, iOS: iosInit),
         onDidReceiveNotificationResponse: (_) {},
       );
-      _notificationIcon = '@mipmap/ic_launcher';
-      debugPrint("NotificationService: inizializzato con successo usando @mipmap/ic_launcher (scudetto Ducati)");
+      _notificationIcon = androidIcon;
+      debugPrint("NotificationService: inizializzato con icona drawable '$androidIcon'");
     } catch (e) {
-      debugPrint("Errore inizializzazione con ic_notification: $e. Provo fallback con ic_launcher...");
-      try {
-        const AndroidInitializationSettings androidInitFallback =
-            AndroidInitializationSettings('@mipmap/ic_launcher');
-        await _plugin.initialize(
-          const InitializationSettings(android: androidInitFallback, iOS: DarwinInitializationSettings(
-            requestAlertPermission: true,
-            requestBadgePermission: true,
-            requestSoundPermission: true,
-          )),
-          onDidReceiveNotificationResponse: (_) {},
-        );
-        _notificationIcon = '@mipmap/ic_launcher';
-        debugPrint("NotificationService: inizializzato con successo usando fallback @mipmap/ic_launcher");
-      } catch (err) {
-        debugPrint("Errore critico inizializzazione NotificationService: $err");
-        // Non rilanciare: le notifiche non funzioneranno ma l'app resta stabile
-        _notificationIcon = '@mipmap/ic_launcher';
-        _initialized = true;
-        return;
-      }
+      // Se fallisce anche questa, la risorsa manca dal progetto Android:
+      // controlla che ic_notification.png ci sia in TUTTE le drawable-*.
+      // Non rilanciare: le notifiche non funzioneranno ma l'app resta stabile.
+      debugPrint("NotificationService: init fallita ($e). "
+          "Verifica che res/drawable-*/ic_notification.png esista.");
+      _notificationIcon = androidIcon;
+      _initialized = true;
+      return;
     }
 
     // 2. Crea i canali Android IMMEDIATAMENTE (prima di qualsiasi invio)
