@@ -39,6 +39,28 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   double _currentSpeed = 74.0;
   Timer? _telemetryTimer;
 
+  // Stato per la visualizzazione temporanea del pulsante Chiudi (X) tramite swipe down
+  bool _showCloseButton = false;
+  Timer? _closeButtonTimer;
+
+  // Controller per l'animazione di rotazione 3D dell'icona microfono
+  late final AnimationController _rotationController;
+
+  void _triggerShowCloseButton() {
+    if (!mounted) return;
+    setState(() {
+      _showCloseButton = true;
+    });
+    _closeButtonTimer?.cancel();
+    _closeButtonTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() {
+          _showCloseButton = false;
+        });
+      }
+    });
+  }
+
   // Coordinate di riferimento (Passo del Muraglione, Mugello/Toscana)
   final LatLng _myLocation = const LatLng(43.9961, 11.6429);
   
@@ -82,6 +104,12 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       duration: const Duration(milliseconds: 1000),
     );
 
+    // Inizializza rotazione 3D microfono
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
     // Simula telemetria attiva in marcia
     _telemetryTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (mounted) {
@@ -118,6 +146,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       overlays: SystemUiOverlay.values,
     );
     _telemetryTimer?.cancel();
+    _closeButtonTimer?.cancel();
+    _rotationController.dispose();
     _waveController.dispose();
     _audioPlayer.dispose();
     _tts.stop();
@@ -246,8 +276,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     final telemetry = widget.viewModel.data;
 
     return Scaffold(
-      body: Stack(
-        children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragUpdate: (details) {
+          if (details.delta.dy > 8) {
+            _triggerShowCloseButton();
+          }
+        },
+        child: Stack(
+          children: [
           // ── MAPPA COMPLETA A SCHERMO INTERO ─────────────────────────
           FlutterMap(
             mapController: _mapController,
@@ -378,57 +415,42 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             ],
           ),
 
-          // ── TOP HUD BAR (Meteo, Stato e Close) ──────────────────────
-          Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Meteo solo icona e gradi
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          // ── PULSANTE CHIUDI A SCOMPARSA (Swipe down per visualizzarlo al centro in alto) ──
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            top: _showCloseButton ? 16 : -80,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pop();
+                },
+                child: Container(
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        "22°C",
-                        style: GoogleFonts.orbitron(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                    color: Colors.black.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.alertRed, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.alertRed.withOpacity(0.4),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      )
                     ],
                   ),
-                ),
-
-                // Pulsante Chiudi
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.85),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.alertRed.withOpacity(0.5)),
-                    ),
-                    child: const Icon(
+                  child: const Center(
+                    child: Icon(
                       Icons.close,
                       color: AppTheme.alertRed,
-                      size: 20,
+                      size: 26,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
 
@@ -449,27 +471,25 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Marciametro Gigante
+                  // Marcia
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Icona ingranaggio/cambio marcia + numero
+                      Row(
                         children: [
-                          Text(
-                            "MARCIA",
-                            style: GoogleFonts.orbitron(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textMuted,
-                            ),
+                          Icon(
+                            Icons.change_circle_outlined,
+                            color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
+                            size: 18,
                           ),
+                          const SizedBox(width: 8),
                           Text(
                             _currentGear == 0 ? "N" : "$_currentGear",
                             style: GoogleFonts.teko(
-                              fontSize: 64,
+                              fontSize: 54,
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.activeCyan,
+                              color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
                               height: 0.9,
                             ),
                           ),
@@ -496,39 +516,27 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ),
                   const Divider(color: Colors.white10),
 
-                  // Velocità istantanea
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Velocità istantanea (solo valore e unità di misura, senza etichetta di testo)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        "VELOCITÀ",
+                        "${_currentSpeed.toInt()}",
+                        style: GoogleFonts.teko(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        "KM/H",
                         style: GoogleFonts.orbitron(
                           fontSize: 9,
                           color: AppTheme.textMuted,
                         ),
-                      ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            "${_currentSpeed.toInt()}",
-                            style: GoogleFonts.teko(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              height: 1.0,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            "KM/H",
-                            style: GoogleFonts.orbitron(
-                              fontSize: 9,
-                              color: AppTheme.textMuted,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -648,7 +656,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           // ── BOTTOM WIDGET (Pannello Assistente Vocale / Stato Comandi) ──
           Positioned(
             bottom: 12,
-            right: 12,
+            right: 48, // Lascia spazio per la barra delle marce a destra
             left: 194,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -659,37 +667,49 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
               child: Row(
                 children: [
-                  // Icona Assistente / Microfono
+                  // Icona Assistente / Microfono (Stile Siri: rosso con rotazione 3D sull'asse Y)
                   GestureDetector(
                     onTap: _startVoiceListening,
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: _isListening ? AppTheme.alertRed.withOpacity(0.2) : AppTheme.activeCyan.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _isListening ? AppTheme.alertRed : AppTheme.activeCyan,
-                          width: 2,
+                    child: AnimatedBuilder(
+                      animation: _rotationController,
+                      builder: (context, child) {
+                        return Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.identity()
+                            ..setEntry(3, 2, 0.002) // effetto prospettiva 3D
+                            ..rotateY(_rotationController.value * 2 * 3.14159265),
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppTheme.alertRed.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppTheme.alertRed,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.alertRed.withOpacity(0.4),
+                              blurRadius: 8,
+                            )
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (_isListening ? AppTheme.alertRed : AppTheme.activeCyan).withOpacity(0.2),
-                            blurRadius: 8,
-                          )
-                        ],
-                      ),
-                      child: Center(
-                        child: Icon(
-                          _isListening ? Icons.mic : Icons.mic_none,
-                          color: _isListening ? AppTheme.alertRed : AppTheme.activeCyan,
-                          size: 24,
+                        child: const Center(
+                          child: Icon(
+                            Icons.mic,
+                            color: AppTheme.alertRed,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
-
+ 
                   // Pulsante Navigazione Waze Rapido
                   GestureDetector(
                     onTap: () async {
@@ -728,7 +748,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     ),
                   ),
                   const SizedBox(width: 16),
-
+ 
                   // Messaggio dell'assistente vocale
                   Expanded(
                     child: Column(
@@ -757,7 +777,34 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
 
+                  // Meteo riposizionato in basso a destra
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          "22°C",
+                          style: GoogleFonts.orbitron(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+ 
                   // Animazione onda sonora (visualizer)
                   if (_isListening)
                     Row(
@@ -765,7 +812,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                         return AnimatedBuilder(
                           animation: _waveController,
                           builder: (context, child) {
-                            // Calcola altezze dinamiche basate sull'animazione per emulare l'onda vocale
                             final animValue = _waveController.value;
                             double height = 4.0 + (index % 2 == 0 ? animValue : 1 - animValue) * 16.0;
                             return Container(
@@ -782,7 +828,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       }),
                     )
                   else if (_navigationActive)
-                    // Icona Waze / Navigazione
                     Row(
                       children: [
                         const Icon(Icons.directions, color: AppTheme.activeCyan, size: 20),
@@ -801,8 +846,86 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
             ),
           ),
+
+          // ── BARRA DELLE MARCE LATERALE DX (Full Height) ──
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: 36,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.9),
+                border: const Border(
+                  left: BorderSide(color: Colors.white10, width: 1),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ["6", "5", "4", "3", "2", "N", "1"].map((g) {
+                  final bool isActive = (_currentGear == 0 && g == "N") || (_currentGear != 0 && _currentGear.toString() == g);
+                  Color activeColor = AppTheme.activeCyan;
+                  if (g == "N") {
+                    activeColor = Colors.greenAccent.shade400;
+                  }
+                  
+                  return Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: isActive ? activeColor.withOpacity(0.2) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: isActive ? activeColor : Colors.white.withOpacity(0.05),
+                          width: isActive ? 2 : 1,
+                        ),
+                        boxShadow: isActive ? [
+                          BoxShadow(
+                            color: activeColor.withOpacity(0.3),
+                            blurRadius: 4,
+                          )
+                        ] : null,
+                      ),
+                      child: Center(
+                        child: Text(
+                          g,
+                          style: GoogleFonts.orbitron(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: isActive ? activeColor : Colors.white24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
+          // ── BORDI DELLA GUI COLORATI E GLOWING IN ASCOLTO (Siri-style) ──
+          if (_isListening)
+            IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppTheme.alertRed,
+                    width: 4,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.alertRed.withOpacity(0.4),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    )
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
+     ),
     );
   }
 }

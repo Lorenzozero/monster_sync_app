@@ -671,12 +671,15 @@ class _LibrettoViewState extends State<LibrettoView>
               ]),
               const Spacer(),
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () async {
                   _totalKm = await DbHelper().getTotalKm();
                   setState(() {});
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppTheme.activeCyan.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
@@ -685,7 +688,7 @@ class _LibrettoViewState extends State<LibrettoView>
                   child: const Icon(
                     Icons.sync,
                     color: AppTheme.activeCyan,
-                    size: 14,
+                    size: 16,
                   ),
                 ),
               ),
