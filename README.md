@@ -28,22 +28,31 @@ Questa repository contiene l'applicazione mobile **Flutter** (collegata via Blue
 
 ---
 
-## 🛠️ L'Hardware "Fai da Te" (BOM AliExpress ~22.30€)
+## 🛠️ L'Hardware "Fai da Te" (BOM ~50-60€)
 
 Per far funzionare la telemetria sulla moto, devi assemblare la centralina custom *MonsterSync-Brain* (da inserire sotto la sella o nel codone) utilizzando i seguenti componenti economici:
 
-1.  **ESP32 NodeMCU (WROOM-32D)** (~€4.50):
-    *   *Scopo*: Riceve i dati dal GPS e dall'IMU, esegue il filtro di Kalman/Complementare per l'angolo di piega e trasmette tutto via Bluetooth Classic/BLE all'applicazione mobile.
+1.  **Scheda ESP32-S3** — dev board con PSRAM, es. ESP32-S3-DevKitC-1 (~€9):
+    *   *Scopo*: Riceve i dati dal GPS e dall'IMU, calcola l'angolo di piega e trasmette via BLE all'app.
+    *   ⚠️ **Deve essere un S3**, non un WROOM-32D: il firmware e la mappa dei pin sono tarati sull'S3.
 2.  **Sensore IMU MPU-6050 (GY-521)** (~€1.20):
-    *   *Scopo*: Misura l'accelerazione lineare e la velocità angolare. Va fissato solidamente e in bolla sul telaio della moto.
-3.  **Modulo GPS Beitian BN-180** (~€9.50):
-    *   *Scopo*: Rileva velocità reale, traiettoria ed altitudine a **10Hz** (10 aggiornamenti al secondo tramite protocollo UART/NMEA a 115200 baud).
-4.  **Fotoaccoppiatore PC817 (Isolamento I/O 12V)** (~€1.80):
-    *   *Scopo*: Isola elettricamente i segnali a 12V della moto (impulsi bobina iniettore per calcolare gli RPM, e cavo sensore riserva serbatoio) riducendoli a 3.3V sicuri per l'ESP32.
-5.  **Convertitore Step-Down DC-DC LM2596** (~€1.50):
-    *   *Scopo*: Abbassa la tensione instabile dell'impianto elettrico della moto (12V-14.4V) ai 5V stabili necessari per alimentare l'ESP32 tramite pin Vin.
-6.  **Scatola Waterproof IP65 + Fusibile 1A** (~€3.80):
-    *   *Scopo*: Alloggiamento impermeabile e protezione contro i cortocircuiti dovuti alle forti vibrazioni del bicilindrico.
+    *   *Scopo*: Accelerazione lineare e velocità angolare. Va fissato **in bolla** e allineato con l'asse longitudinale della moto.
+    *   ℹ️ È il compromesso economico: non ha filtro anti-alias e il giroscopio deriva. Il firmware compensa (DLPF a 21 Hz + calibrazione del bias), ma per una telemetria seria il salto è un **ICM-42688-P** (~€15).
+3.  **Modulo GPS Beitian BN-220** (~€9.50):
+    *   *Scopo*: Velocità reale, traiettoria e quota. La velocità è ciò che alimenta il riferimento cinematico dell'angolo di piega: senza GPS, niente piega.
+    *   ⚠️ **Va configurato prima dell'uso**: i BN-180/BN-220 escono di fabbrica a **9600 baud e 1 Hz**, mentre il firmware apre la seriale a **115200** e si aspetta **10 Hz**. Si imposta una volta con **u-center** (u-blox), riducendo anche le frasi NMEA attive perché a 10 Hz non ci starebbero tutte.
+4.  **Fotoaccoppiatore PC817** (~€1.80) **+ diodi 1N4148** (~€1):
+    *   *Scopo*: Isola i segnali a 12V della moto (impulsi iniettore per RPM e consumo, sensore riserva) portandoli a 3.3V sicuri.
+    *   ⚠️ **Un 1N4148 in antiparallelo al LED di ogni opto collegato all'iniettore**: il PC817 regge 6V inversi, il flyback induttivo dell'iniettore ne produce 60–100. Senza diodo il LED muore.
+5.  **Convertitore Step-Down automotive — LM5164** (~€12) **oppure LM2596 + protezioni** (~€5):
+    *   *Scopo*: Porta la tensione dell'impianto (12–14,4V) ai 5V dell'ESP32.
+    *   ⚠️ **L'LM2596 da solo non basta**: accetta 40V massimi e non ha protezione da *load dump*. Sui Monster il regolatore/raddrizzatore Shindengen è il punto debole noto, e quando cede può superarli — con il rischio che il buck si guasti in corto e mandi i 12V all'ESP32. Se scegli l'LM2596, aggiungi **TVS SMAJ33A + MOSFET P-channel anti-inversione** (~€2). L'LM5164 regge 65V ed è nato per l'automotive.
+6.  **Scatola Waterproof IP65 + Fusibile 1A + portafusibile volante** (~€3.80):
+    *   *Scopo*: Alloggiamento impermeabile e protezione dai cortocircuiti.
+7.  **Cablaggio e minuteria** (~€15) — la voce che tutti dimenticano:
+    *   Cavo automotive, guaina, **connettori con ritenuta** (niente dupont sulla moto), fuse tap per la derivazione sotto chiave, resistenze 1kΩ e 10kΩ, millefori.
+    *   **Supporto smorzante per l'IMU** (silicone o sorbothane): montata rigida su un bicilindrico, l'IMU falsa i dati e si spacca alle saldature.
+    *   Un **cavo USB dati** (non solo ricarica) per flashare.
 
 ---
 
