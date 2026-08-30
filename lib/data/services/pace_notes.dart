@@ -227,25 +227,6 @@ class PaceNotesEngine {
     return out;
   }
 
-  /// Mediana su finestra scorrevole della serie dei raggi (con segno).
-  /// I null restano null: sono i tratti rettilinei.
-  static List<double?> _medianFilter(List<double?> v, int window) {
-    final out = List<double?>.filled(v.length, null);
-    for (var i = 0; i < v.length; i++) {
-      if (v[i] == null) continue;
-      final lo = math.max(0, i - window), hi = math.min(v.length - 1, i + window);
-      final vals = <double>[];
-      for (var j = lo; j <= hi; j++) {
-        final x = v[j];
-        if (x != null) vals.add(x);
-      }
-      if (vals.isEmpty) continue;
-      vals.sort();
-      out[i] = vals[vals.length ~/ 2];
-    }
-    return out;
-  }
-
   /// Curvatura di Menger con segno.
   /// R = (|AB|·|BC|·|CA|) / (4·Area) — il segno del prodotto vettoriale
   /// distingue destra da sinistra.
