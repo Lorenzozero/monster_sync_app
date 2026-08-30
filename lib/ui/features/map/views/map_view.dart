@@ -6,6 +6,7 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../core/theme.dart';
 import '../../dashboard/view_models/dashboard_view_model.dart';
 import '../../../widgets/value_tooltip.dart';
+import '../../pacenotes/views/pace_notes_view.dart';
 
 class TrailPoint {
   final LatLng coord;
@@ -172,19 +173,33 @@ class _MapViewState extends State<MapView> {
                   'LIVE GPS MAP',
                   style: AppTheme.orbitronTitle.copyWith(fontSize: 32, fontStyle: FontStyle.normal),
                 ),
-                IconButton(
-                  icon: Icon(
-                    _followBike ? Icons.my_location : Icons.location_searching,
-                    color: _followBike ? AppTheme.activeCyan : Colors.white38,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _followBike = !_followBike;
-                    });
-                    if (_followBike) {
-                      _mapController.move(_lastCoord, 14.5);
-                    }
-                  },
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Pace notes da un GPX
+                    IconButton(
+                      tooltip: 'Pace notes da un file GPX',
+                      icon: const Icon(Icons.route, color: AppTheme.activeCyan),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const PaceNotesView()),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _followBike ? Icons.my_location : Icons.location_searching,
+                        color: _followBike ? AppTheme.activeCyan : Colors.white38,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _followBike = !_followBike;
+                        });
+                        if (_followBike) {
+                          _mapController.move(_lastCoord, 14.5);
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

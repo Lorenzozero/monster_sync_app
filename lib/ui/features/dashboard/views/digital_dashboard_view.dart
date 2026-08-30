@@ -12,6 +12,7 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
+import 'package:monster_sync_app/data/services/weather_service.dart';
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -79,6 +80,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   // Controller per le animazioni del microfono (onda sonora)
   late AnimationController _waveController;
 
+  // Meteo reale (Open-Meteo). Null finche' la prima lettura non arriva.
+  WeatherInfo? _weather;
+
+  Future<void> _loadWeather() async {
+    final w = await WeatherService.instance
+        .forPosition(_myLocation.latitude, _myLocation.longitude);
+    if (mounted && w != null) setState(() => _weather = w);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -120,6 +130,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         });
       }
     });
+
+    // Meteo vero: serve anche a sapere se l'asfalto e' bagnato, non solo
+    // a scrivere i gradi.
+    _loadWeather();
 
     // Avvia un breve ruggito all'avvio della schermata
     _playStartRoar();
@@ -502,7 +516,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 15),
                       const SizedBox(width: 5),
                       Text(
-                        "22°C",
+                        _weather == null
+                            ? "--°C"
+                            : "${_weather!.temperatureC.toStringAsFixed(0)}°C",
                         style: GoogleFonts.orbitron(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -528,12 +544,21 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     ],
                   ),
                   const SizedBox(height: 3),
+                  // Condizione dell'asfalto: e' l'informazione che serve
+                  // davvero in moto, molto piu' dei gradi.
                   Text(
-                    "PIOGGIA TRA 15 MIN ⚠️",
+                    _weather == null
+                        ? "METEO NON DISPONIBILE"
+                        : (_weather!.road == RoadCondition.dry
+                            ? "ASFALTO ASCIUTTO"
+                            : "${_weather!.roadLabel} ⚠️"),
                     style: GoogleFonts.orbitron(
                       fontSize: 7,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.alertRed,
+                      color: (_weather?.road ?? RoadCondition.dry) ==
+                              RoadCondition.dry
+                          ? AppTheme.activeCyan
+                          : AppTheme.alertRed,
                     ),
                   ),
                 ],
