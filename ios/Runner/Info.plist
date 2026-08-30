@@ -6,6 +6,10 @@
 	<string>MonsterSync richiede il Bluetooth per connettersi alla telemetria della moto.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>MonsterSync richiede il Bluetooth per ricevere dati dai sensori.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MonsterSync richiede l'accesso al microfono per ascoltare i comandi vocali del cruscotto.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MonsterSync richiede il riconoscimento vocale per interpretare i comandi del cruscotto.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

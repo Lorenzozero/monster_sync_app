@@ -2,13 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong2.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
-import '../../../../core/theme.dart';
-import '../../dashboard/view_models/dashboard_view_model.dart';
+import 'package:monster_sync_app/ui/core/theme.dart';
+import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -345,7 +345,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               children: [
                 // Meteo ed avvisi pioggia
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, py: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.85),
                     borderRadius: BorderRadius.circular(20),
@@ -434,7 +434,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       ),
                       // Mappa/R mode indicator
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, py: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppTheme.alertRed.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(4),
@@ -576,7 +576,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             right: 12,
             left: 194,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, py: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(16),

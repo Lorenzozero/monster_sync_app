@@ -219,7 +219,7 @@ tl.to(viewerParams, {
   pointerEvents: "auto",
   duration: 1
 }, "<")
-// Stage 7: Hardware -> Mockup Mobile (Moto riappare, Tabella scompare)
+// Stage 7: Hardware -> Mockup Mobile (Moto riappare su desktop, scompare su mobile; Tabella scompare)
 .to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 55,
@@ -232,7 +232,8 @@ tl.to(viewerParams, {
   onStart: () => {
     setHotspotsVisibility([]);
     if (!noItem) {
-      gsap.to(viewer, { opacity: 1, duration: 0.4 });
+      const isMobile = window.innerWidth < 1024;
+      gsap.to(viewer, { opacity: isMobile ? 0 : 1, duration: 0.4 });
     }
   },
   onReverseComplete: () => {
@@ -251,7 +252,7 @@ tl.to(viewerParams, {
   pointerEvents: "none",
   duration: 1
 }, "<")
-// Stage 8: Mockup -> Download finale (Rotazione finale cinematografica)
+// Stage 8: Mockup -> Download finale (Rotazione finale cinematografica su desktop, nascosta su mobile)
 .to(viewerParams, {
   orbitTheta: -195,
   orbitPhi: 75,
@@ -261,9 +262,54 @@ tl.to(viewerParams, {
   pitch: 0,
   yaw: 0,
   onUpdate: updateCamera,
-  onStart: () => setHotspotsVisibility([]),
-  onReverseComplete: () => setHotspotsVisibility([]),
+  onStart: () => {
+    setHotspotsVisibility([]);
+    if (!noItem) {
+      const isMobile = window.innerWidth < 1024;
+      gsap.to(viewer, { opacity: isMobile ? 0 : 1, duration: 0.4 });
+    }
+  },
+  onReverseComplete: () => {
+    if (!noItem) {
+      const isMobile = window.innerWidth < 1024;
+      gsap.to(viewer, { opacity: isMobile ? 0 : 1, duration: 0.4 });
+    }
+  },
   duration: 1
+});
+
+// Animazione di rotazione del telefono mockup a landscape sullo scroll
+ScrollTrigger.create({
+  trigger: "#mockup",
+  start: "top 45%",
+  end: "top 10%",
+  scrub: true,
+  onUpdate: (self) => {
+    const progress = self.progress; // 0 a 1
+    const angle = progress * 90; // da 0 a 90 gradi
+    const phone = document.getElementById('phone-mockup');
+    const portraitView = document.getElementById('mock-portrait-view');
+    const landscapeView = document.getElementById('mock-landscape-view');
+    
+    if (phone) {
+      phone.style.transform = `rotate(${angle}deg)`;
+    }
+    
+    // Dissolvenza incrociata delle viste
+    if (portraitView && landscapeView) {
+      if (progress > 0.5) {
+        portraitView.style.opacity = '0';
+        portraitView.style.pointerEvents = 'none';
+        landscapeView.style.opacity = '1';
+        landscapeView.style.pointerEvents = 'auto';
+      } else {
+        portraitView.style.opacity = '1';
+        portraitView.style.pointerEvents = 'auto';
+        landscapeView.style.opacity = '0';
+        landscapeView.style.pointerEvents = 'none';
+      }
+    }
+  }
 });
 
 // Dissolvenza e comparsa a scorrimento delle card informative (Fade-in / Parallax)

@@ -380,50 +380,168 @@
     <section id="mockup" class="min-h-[75vh] lg:min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
       <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">04.8 / PREVIEW UTENTE</span>
-        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">MOCKUP & FUNZIONALITÀ APP</h2>
-        <p class="text-gray-400 text-sm mb-6 leading-relaxed">
-          Un'interfaccia scura, aggressiva e ad alta leggibilità pensata per l'uso in moto, con elementi grafici fluidi a 60FPS:
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-red-500">CRUSCOTTO DIGITALE & MOCKUP</h2>
+        <p class="text-gray-300 text-sm mb-6 leading-relaxed">
+          L'applicazione si adatta al tuo stile di guida. Nella visualizzazione verticale hai sotto controllo i dati essenziali, ma <strong>tenendo premuto il logo Ducati si attiva l'esclusiva modalità CRUSCOTTO DIGITALE ORIZZONTALE (Landscape)</strong> progettata specificamente per l'uso in moto sul manubrio:
         </p>
+        <!-- Highlighted list of dashboard features -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-xs font-orbitron">
+          <div class="bg-red-950/15 border border-red-500/20 p-3 rounded-lg flex items-start gap-2.5">
+            <span class="text-red-500 text-lg">🗺️</span>
+            <div>
+              <span class="text-white block font-bold">MAPPE OFFLINE STYLE WAZE</span>
+              <p class="text-[10px] text-gray-400 font-sans mt-0.5 leading-normal">Mappe scure cyberpunk (CartoDB Dark Matter) completamente gratuite e precaricate per viaggiare anche senza rete telefonica.</p>
+            </div>
+          </div>
+          <div class="bg-red-950/15 border border-red-500/20 p-3 rounded-lg flex items-start gap-2.5">
+            <span class="text-red-500 text-lg">📸</span>
+            <div>
+              <span class="text-white block font-bold">ALLERTA AUTOVELOX</span>
+              <p class="text-[10px] text-gray-400 font-sans mt-0.5 leading-normal">Rilevamento e avviso visivo acustico in tempo reale per autovelox fissi lungo la tua rotta.</p>
+            </div>
+          </div>
+          <div class="bg-red-950/15 border border-red-500/20 p-3 rounded-lg flex items-start gap-2.5">
+            <span class="text-red-500 text-lg">🎙️</span>
+            <div>
+              <span class="text-white block font-bold">ASSISTENTE CUFFIE (TTS/STT)</span>
+              <p class="text-[10px] text-gray-400 font-sans mt-0.5 leading-normal">Parla direttamente tramite il microfono del tuo interfono per cercare il distributore più vicino o interrogare la telemetria.</p>
+            </div>
+          </div>
+          <div class="bg-red-950/15 border border-red-500/20 p-3 rounded-lg flex items-start gap-2.5">
+            <span class="text-red-500 text-lg">🏍️</span>
+            <div>
+              <span class="text-white block font-bold">INTEGRAZIONE NATIVA</span>
+              <p class="text-[10px] text-gray-400 font-sans mt-0.5 leading-normal">Piena integrazione con iOS e Android per sfruttare sintesi vocale e vibrazioni aptiche del sistema operativo.</p>
+            </div>
+          </div>
+        </div>
+        <!-- CSS Phone Mockup Wrapper -->
+        <div class="flex items-center justify-center min-h-[500px] my-8 overflow-visible">
+          <div id="phone-mockup" class="relative w-[240px] h-[480px] bg-neutral-900 border-[8px] border-neutral-800 rounded-[36px] shadow-[0_0_50px_rgba(0,229,255,0.15)] overflow-hidden transition-all duration-500 border-cyan-500/20 origin-center">
+            
+            <!-- Notch (Portrait position, will rotate with phone) -->
+            <div id="phone-notch" class="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-neutral-800 rounded-b-xl z-30 transition-all duration-500"></div>
+            
+            <!-- Mock Screen Content -->
+            <div class="w-full h-full bg-neutral-950 flex flex-col font-sans relative">
+              
+              <!-- ── VIEW 1: PORTRAIT HUD (Visible when vertical) ── -->
+              <div id="mock-portrait-view" class="absolute inset-0 p-4 pt-8 flex flex-col transition-opacity duration-500 opacity-100 z-10">
+                <div class="flex justify-between items-center border-b border-white/5 pb-2 mb-4">
+                  <span class="font-orbitron text-[8px] text-cyan-400 tracking-wider">MONSTERSYNC HUD</span>
+                  <div class="w-2 h-2 rounded-full bg-green-500 animate-ping"></div>
+                </div>
+                
+                <!-- SPEED -->
+                <div class="text-center my-2">
+                  <div class="text-[9px] text-gray-500 font-orbitron">SPEED GPS</div>
+                  <div class="text-4xl font-bold font-orbitron text-white leading-none">124<span class="text-xs text-cyan-400">km/h</span></div>
+                </div>
+                
+                <!-- GAUGE RPM -->
+                <div class="h-20 w-full flex items-center justify-center relative my-2">
+                  <div class="w-24 h-24 rounded-full border-4 border-dashed border-red-600/50 flex flex-col items-center justify-center">
+                    <span class="text-[8px] text-gray-500 font-orbitron">RPM CONTROLS</span>
+                    <span class="text-sm font-bold text-red-500">6.250</span>
+                  </div>
+                </div>
+                
+                <!-- MINI LEAN METER -->
+                <div class="bg-white/5 border border-white/10 rounded-xl p-3 flex justify-between items-center mt-auto">
+                  <div class="text-center w-1/3">
+                    <div class="text-[7px] text-gray-500">LEFT MAX</div>
+                    <div class="text-xs font-bold text-cyan-400">-32°</div>
+                  </div>
+                  <div class="w-1/3 h-1 bg-neutral-800 rounded-full relative overflow-hidden">
+                    <div class="absolute left-1/2 -translate-x-1/2 w-1.5 h-full bg-cyan-400"></div>
+                  </div>
+                  <div class="text-center w-1/3">
+                    <div class="text-[7px] text-gray-500">RIGHT MAX</div>
+                    <div class="text-xs font-bold text-red-500">+38°</div>
+                  </div>
+                </div>
+              </div>
 
-        <!-- CSS Phone Mockup -->
-        <div class="relative mx-auto w-[240px] h-[480px] bg-neutral-900 border-[8px] border-neutral-800 rounded-[36px] shadow-2xl overflow-hidden mb-8 border-cyan-500/20">
-          <!-- Notch -->
-          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-neutral-800 rounded-b-xl z-30"></div>
-          
-          <!-- Mock Screen Content -->
-          <div class="w-full h-full bg-neutral-950 p-4 pt-8 flex flex-col font-sans relative">
-            <div class="flex justify-between items-center border-b border-white/5 pb-2 mb-4">
-              <span class="font-orbitron text-[8px] text-cyan-400 tracking-wider">MONSTERSYNC HUD</span>
-              <div class="w-2 h-2 rounded-full bg-green-500 animate-ping"></div>
-            </div>
-            
-            <!-- CONTROLS SPEED -->
-            <div class="text-center my-2">
-              <div class="text-[9px] text-gray-500 font-orbitron">SPEED GPS</div>
-              <div class="text-4xl font-bold font-orbitron text-white leading-none">124<span class="text-xs text-cyan-400">km/h</span></div>
-            </div>
-            
-            <!-- GAUGE RPM -->
-            <div class="h-20 w-full flex items-center justify-center relative my-2">
-              <div class="w-24 h-24 rounded-full border-4 border-dashed border-red-600/50 flex flex-col items-center justify-center">
-                <span class="text-[8px] text-gray-500 font-orbitron">RPM CONTROLS</span>
-                <span class="text-sm font-bold text-red-500">6.250</span>
+              <!-- ── VIEW 2: LANDSCAPE DIGITAL DASHBOARD (Visible when rotated) ── -->
+              <div id="mock-landscape-view" class="absolute w-[464px] h-[224px] top-[120px] left-[-112px] -rotate-90 origin-center flex flex-row transition-opacity duration-500 opacity-0 bg-neutral-950 border border-white/10 rounded-[20px] overflow-hidden z-20">
+                <!-- Map Background (Stylized open-source map preview) -->
+                <div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] bg-slate-950 opacity-40"></div>
+                
+                <!-- Stylized Map Route Line -->
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 464 224">
+                  <path d="M 50 150 Q 180 80, 240 130 T 400 90" fill="none" stroke="#00e5ff" stroke-width="4" stroke-dasharray="6,4" />
+                  <!-- Rider location -->
+                  <circle cx="50" cy="150" r="6" fill="#00e5ff" />
+                  <circle cx="50" cy="150" r="12" fill="none" stroke="#00e5ff" stroke-width="1.5" />
+                  <!-- Gas station marker -->
+                  <circle cx="400" cy="90" r="8" fill="#fbbf24" />
+                  <!-- Autovelox camera -->
+                  <circle cx="210" cy="115" r="5" fill="#ef4444" />
+                </svg>
+
+                <!-- TOP HUD OVERLAY -->
+                <div class="absolute top-2 left-2 right-2 flex justify-between items-center pointer-events-none">
+                  <div class="bg-black/80 px-2.5 py-1 rounded-full border border-white/10 text-[7px] font-orbitron font-bold text-white flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    <span>METEO: 22°C - AVVISO PIOGGIA TRA 15 MIN ⚠️</span>
+                  </div>
+                  <div class="bg-black/80 px-2.5 py-1 rounded-full border border-red-500/30 text-[7px] font-orbitron font-bold text-red-500">
+                    AVVELOX A 200M 📸
+                  </div>
+                </div>
+
+                <!-- LEFT PANEL (Marcia, Autonomia, Serbatoio) -->
+                <div class="w-[130px] h-full bg-black/85 border-r border-white/10 p-2.5 flex flex-col justify-between z-10 font-orbitron">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div class="text-[6px] text-gray-500 font-bold uppercase">MARCIA</div>
+                      <div class="text-3xl font-bold font-teko text-cyan-400 leading-none">3</div>
+                    </div>
+                    <div class="border border-red-500 px-1 py-0.5 rounded text-[5px] text-red-500 font-black">
+                      R-MODE
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div class="text-[6px] text-gray-500 uppercase">VELOCITÀ</div>
+                    <div class="text-xl font-bold text-white font-teko leading-none">74 <span class="text-[6px] text-gray-400 font-orbitron">KM/H</span></div>
+                  </div>
+
+                  <div>
+                    <div class="flex justify-between text-[6px] mb-0.5">
+                      <span class="text-gray-500">AUTONOMIA</span>
+                      <span class="text-cyan-400 font-bold">180 KM</span>
+                    </div>
+                    <!-- Fuel bar -->
+                    <div class="w-full h-1.5 bg-neutral-800 rounded overflow-hidden flex gap-[1px]">
+                      <div class="w-3 h-full bg-cyan-400"></div>
+                      <div class="w-3 h-full bg-cyan-400"></div>
+                      <div class="w-3 h-full bg-cyan-400"></div>
+                      <div class="w-3 h-full bg-cyan-400"></div>
+                      <div class="w-3 h-full bg-neutral-700"></div>
+                      <div class="w-3 h-full bg-neutral-700"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RIGHT BOTTOM (Voice Assistant Info & Mic Icon) -->
+                <div class="absolute bottom-2.5 right-2.5 left-[142.5px] bg-black/85 border border-white/10 rounded-xl p-2 flex items-center justify-between z-10">
+                  <div class="w-6 h-6 rounded-full bg-cyan-400/10 border border-cyan-400 flex items-center justify-center">
+                    <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path></svg>
+                  </div>
+                  <div class="flex-grow ml-2 font-sans">
+                    <div class="text-[6px] text-cyan-400 font-orbitron tracking-wider font-bold">ASSISTENTE VOCALE</div>
+                    <div class="text-[8px] text-white truncate max-w-[200px]">"Cerca distributore più vicino..."</div>
+                  </div>
+                  <!-- Sound wave effect -->
+                  <div class="flex items-center gap-[1px] h-3">
+                    <div class="w-[2px] h-2 bg-cyan-400"></div>
+                    <div class="w-[2px] h-3 bg-cyan-400"></div>
+                    <div class="w-[2px] h-1.5 bg-cyan-400"></div>
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <!-- MINI LEAN METER -->
-            <div class="bg-white/5 border border-white/10 rounded-xl p-3 flex justify-between items-center mt-auto">
-              <div class="text-center w-1/3">
-                <div class="text-[7px] text-gray-500">LEFT MAX</div>
-                <div class="text-xs font-bold text-cyan-400">-32°</div>
-              </div>
-              <div class="w-1/3 h-1 bg-neutral-800 rounded-full relative overflow-hidden">
-                <div class="absolute left-1/2 -translate-x-1/2 w-1.5 h-full bg-cyan-400"></div>
-              </div>
-              <div class="text-center w-1/3">
-                <div class="text-[7px] text-gray-500">RIGHT MAX</div>
-                <div class="text-xs font-bold text-red-500">+38°</div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -475,13 +593,25 @@
               </div>
             </div>
 
-            <div class="border-t border-cyan-500/10 pt-4">
-              <h4 class="font-orbitron text-[10px] text-white font-bold tracking-wider uppercase mb-1.5 flex items-center gap-1.5">
-                ℹ️ INSTALLAZIONE SU IPHONE (SIDELOAD)
+            <div class="border-t border-cyan-500/10 pt-4 space-y-3">
+              <h4 class="font-orbitron text-[10px] text-white font-bold tracking-wider uppercase flex items-center gap-1.5">
+                ℹ️ INSTALLAZIONE SU IPHONE (GUIDA DETTAGLIATA SIDELOAD)
               </h4>
-              <p class="text-[11px] text-gray-400 leading-normal">
-                Su iOS, per installare il pacchetto <strong class="text-cyan-400">.ipa</strong> senza App Store, è necessario eseguire il <strong>Sideload</strong>. Puoi utilizzare strumenti gratuiti come <strong>AltStore</strong>, <strong>Sideloadly</strong> o <strong>TrollStore</strong> caricando il file dal tuo computer o direttamente dal telefono per abilitare la telemetria live.
-              </p>
+              <div class="text-[11px] text-gray-400 space-y-2 leading-relaxed">
+                <p>
+                  Per installare il pacchetto <strong class="text-cyan-400">.ipa</strong> su un iPhone reale senza account Apple Developer a pagamento, puoi eseguire il <strong>Sideload</strong> tramite computer o app esterne:
+                </p>
+                <ul class="list-decimal pl-4 space-y-1.5">
+                  <li><strong>Scarica il file IPA</strong> sul tuo computer.</li>
+                  <li>Scarica e apri <strong>Sideloadly</strong> (o AltStore) su Windows/Mac.</li>
+                  <li>Collega l'iPhone al computer via cavo USB e selezionalo come dispositivo di destinazione.</li>
+                  <li>Trascina il file <strong class="text-cyan-400">monster_sync_app.ipa</strong> nella finestra, inserisci il tuo Apple ID gratuito e clicca su <strong>Start</strong> per firmare e installare l'app sul telefono.</li>
+                  <li><strong>Autorizza lo sviluppatore su iPhone</strong>: Al termine, prima di avviare l'app, apri <em>Impostazioni &rarr; Generali &rarr; VPN e Gestione Dispositivo</em>, seleziona il tuo indirizzo email Apple ID sotto "App Sviluppatore" e premi su <strong>"Autorizza"</strong>.</li>
+                </ul>
+                <p class="text-[10px] text-red-400/80">
+                  ⚠️ Nota: Con un Apple ID gratuito il certificato scade ogni <strong>7 giorni</strong>. Per riattivare l'app senza perdere le tue sessioni di telemetria memorizzate, ti basta ricollegare l'iPhone al PC e rieseguire la firma con Sideloadly.
+                </p>
+              </div>
             </div>
           </div>
 
