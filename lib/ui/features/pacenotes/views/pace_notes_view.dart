@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
@@ -18,40 +18,57 @@ class PaceNotesView extends StatefulWidget {
 }
 
 class _PaceNotesViewState extends State<PaceNotesView> {
+  @override
+  void initState() {
+    super.initState();
+    _refreshFileList();
+  }
+
   List<PaceNote> _notes = const [];
   List<TrackPoint> _points = const [];
   String? _fileName;
   bool _loading = false;
   String? _error;
   WeatherInfo? _weather;
+  List<File> _available = const [];
 
   double get _grip => _weather?.gripFactor ?? 1.0;
 
-  Future<void> _pickAndAnalyze() async {
+  /// Cartelle in cui l'app puo' leggere senza chiedere permessi.
+  /// La prima e' quella che l'utente raggiunge dal PC o da un file manager:
+  ///   Android/data/<package>/files
+  Future<List<Directory>> _searchDirs() async {
+    final dirs = <Directory>[];
+    try {
+      final ext = await getExternalStorageDirectory();
+      if (ext != null) dirs.add(ext);
+    } catch (_) {}
+    try {
+      dirs.add(await getApplicationDocumentsDirectory());
+    } catch (_) {}
+    return dirs;
+  }
+
+  Future<void> _refreshFileList() async {
+    final found = <File>[];
+    for (final d in await _searchDirs()) {
+      try {
+        for (final e in d.listSync(recursive: false)) {
+          if (e is File && e.path.toLowerCase().endsWith('.gpx')) found.add(e);
+        }
+      } catch (_) {}
+    }
+    found.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    if (mounted) setState(() => _available = found);
+  }
+
+  Future<void> _analyze(File f) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final res = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        withData: false,
-      );
-      if (res == null || res.files.single.path == null) {
-        setState(() => _loading = false);
-        return;
-      }
-      final path = res.files.single.path!;
-      if (!path.toLowerCase().endsWith('.gpx')) {
-        setState(() {
-          _loading = false;
-          _error = 'Serve un file .gpx — questo è ${path.split('.').last}.';
-        });
-        return;
-      }
-
-      final xml = await File(path).readAsString();
-      final pts = PaceNotesEngine.parseGpx(xml);
+      final pts = PaceNotesEngine.parseGpx(await f.readAsString());
       if (pts.length < 20) {
         setState(() {
           _loading = false;
@@ -62,18 +79,15 @@ class _PaceNotesViewState extends State<PaceNotesView> {
       }
 
       // Meteo sul punto di partenza della traccia: serve a decidere
-      // di quanto abbassare le velocità di riferimento.
+      // di quanto abbassare le velocita' di riferimento.
       final w = await WeatherService.instance
           .forPosition(pts.first.lat, pts.first.lon);
 
-      final notes = PaceNotesEngine.generate(pts,
-          gripFactor: w?.gripFactor ?? 1.0);
-
       setState(() {
         _points = pts;
-        _notes = notes;
+        _notes = PaceNotesEngine.generate(pts, gripFactor: w?.gripFactor ?? 1.0);
         _weather = w;
-        _fileName = res.files.single.name;
+        _fileName = f.path.split(Platform.pathSeparator).last;
         _loading = false;
       });
     } catch (e) {
@@ -140,7 +154,7 @@ class _PaceNotesViewState extends State<PaceNotesView> {
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton.icon(
-                  onPressed: _loading ? null : _pickAndAnalyze,
+                  onPressed: _loading ? null : _refreshFileList,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.activeCyan.withValues(alpha: 0.12),
                     foregroundColor: AppTheme.activeCyan,
@@ -154,8 +168,8 @@ class _PaceNotesViewState extends State<PaceNotesView> {
                           height: 13,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: AppTheme.activeCyan))
-                      : const Icon(Icons.folder_open, size: 15),
-                  label: Text('APRI GPX',
+                      : const Icon(Icons.refresh, size: 15),
+                  label: Text('AGGIORNA',
                       style: GoogleFonts.orbitron(
                           fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
@@ -263,33 +277,118 @@ class _PaceNotesViewState extends State<PaceNotesView> {
             style: GoogleFonts.inter(fontSize: 11, color: Colors.white)),
       );
 
-  Widget _empty() => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.route, size: 44, color: AppTheme.textMuted),
-              const SizedBox(height: 16),
-              Text('Apri un file GPX',
-                  style: GoogleFonts.orbitron(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white)),
-              const SizedBox(height: 10),
-              Text(
-                'Le note descrivono ogni curva prima che arrivi, come farebbe un '
-                'copilota da rally: verso, quanto è stretta in scala 1-6, se si '
-                'stringe o si apre, e a che distanza è.\n\n'
-                'Se ha piovuto nelle ultime ore, le velocità di riferimento '
-                'scendono da sole.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                    fontSize: 11, color: AppTheme.textMuted, height: 1.5),
-              ),
-            ],
+  Widget _empty() => ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 12),
+          const Icon(Icons.route, size: 44, color: AppTheme.textMuted),
+          const SizedBox(height: 16),
+          Text('Scegli una traccia',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.orbitron(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
+          const SizedBox(height: 10),
+          Text(
+            "Le note descrivono ogni curva prima che arrivi, come farebbe un "
+            "copilota da rally: verso, quanto è stretta in scala 1-6, se si "
+            "stringe o si apre, e a che distanza è. "
+            "Se ha piovuto nelle ultime ore, le velocità di riferimento "
+            "scendono da sole.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+                fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
-        ),
+          const SizedBox(height: 22),
+          if (_available.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('NESSUN FILE .GPX TROVATO',
+                      style: GoogleFonts.orbitron(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.alertRed)),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Copia i tuoi file GPX in questa cartella del telefono, "
+                    "poi premi AGGIORNA:",
+                    style: GoogleFonts.inter(
+                        fontSize: 10.5, color: Colors.white70, height: 1.5),
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    "Android/data/com.example.monster_sync_app/files",
+                    style: GoogleFonts.robotoMono(
+                        fontSize: 10, color: AppTheme.activeCyan),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Ci arrivi collegando il telefono al PC, oppure con un file "
+                    "manager. È una cartella dell'app: non serve nessun permesso "
+                    "di accesso alla memoria.",
+                    style: GoogleFonts.inter(
+                        fontSize: 10.5, color: Colors.white70, height: 1.5),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Text('TRACCE DISPONIBILI (${_available.length})',
+                style: GoogleFonts.orbitron(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.activeCyan)),
+            const SizedBox(height: 10),
+            ..._available.map((f) {
+              final kb = (f.lengthSync() / 1024).toStringAsFixed(0);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: _loading ? null : () => _analyze(f),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppTheme.activeCyan.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.description_outlined,
+                            size: 18, color: AppTheme.activeCyan),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            f.path.split(Platform.pathSeparator).last,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                                fontSize: 12, color: Colors.white),
+                          ),
+                        ),
+                        Text('$kb KB',
+                            style: GoogleFonts.orbitron(
+                                fontSize: 8, color: AppTheme.textMuted)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
       );
 
   Widget _list() => ListView.separated(
