@@ -53,9 +53,32 @@ Il codice della centralina sta in [`firmware/`](firmware/). È un progetto **Ard
 diviso in quattro moduli: `imu_kinematic` (angolo di piega), `gps_parser` (NMEA), `ble_server`
 (server GATT) e `sensors_io` (ingressi optoisolati).
 
-> ⚠️ **Stato reale**: BLE, GPS e ingressi digitali funzionano. Il **driver dell'IMU non è ancora
-> scritto** (`IMU_Init()` è un TODO): la fusione cinematica c'è, ma non legge ancora il sensore.
-> Il firmware compila e trasmette, non è ancora una telemetria completa.
+📦 **[Scarica lo ZIP pronto da flashare](docs/monstersync-firmware-esp32s3.zip)** — cartella
+`MonsterSync/` già impaginata per l'IDE, con un `LEGGIMI.txt` che ripete librerie, pin e procedura.
+Lo stesso pulsante è nella sezione Download della landing page.
+
+### 🧭 Come viene calcolato l'angolo di piega
+
+Non con Madgwick, e non è un dettaglio: **in curva stabilizzata la risultante fra gravità e
+accelerazione centripeta è allineata con l'asse verticale della moto**, quindi l'accelerometro
+legge `(0, 0, −g)` esattamente come da fermo in verticale. Qualunque filtro AHRS che usa
+l'accelerometro come riferimento di gravità **converge a 0° mentre sei a 40° di piega**.
+
+Il firmware usa invece:
+
+| Componente | Sorgente |
+| --- | --- |
+| Alta frequenza | integrazione del rateo di rollio del giroscopio, con `dt` misurato (non costante) |
+| Bassa frequenza | riferimento **cinematico** `θ = atan(v · ψ̇ / g)`, con `ψ̇ ≈ ω_y·sinθ + ω_z·cosθ` e `v` dal GPS |
+| Fusione | complementare, α = 0,98 a 100 Hz |
+| Accelerometro | **solo da fermo** (v < 1 m/s), per l'allineamento statico e la G-force |
+
+Il bias del giroscopio viene misurato all'avvio su 500 campioni: **non muovere la moto** mentre sul
+monitor seriale compare *"calibrazione giroscopio"*. Il DLPF del sensore è impostato a **21 Hz**
+perché il bicilindrico vibra e la dinamica della moto sta sotto i 10 Hz.
+
+> ⚠️ **Da validare su strada**: l'algoritmo è quello giusto, ma l'angolo va confrontato con un video
+> girato dalla forcella prima di fidarsene. Finché non lo fai, consideralo indicativo.
 
 ### 🛠️ Ambiente
 
@@ -68,19 +91,21 @@ diviso in quattro moduli: `imu_kinematic` (angolo di piega), `gps_parser` (NMEA)
 
 ### 📌 Scheda e pin
 
-I commenti nel codice sono tarati su un **ESP32-S3-WROOM-1** (GPIO 22–26 sono riservati alla
-Flash Octal-SPI e alla PSRAM, per questo i sensori stanno su GPIO 4 e 5).
-
-> **Nota**: la BOM qui sopra elenca un ESP32 classico (WROOM-32D). Su quel chip **GPIO 5 è un pin
-> di strapping** e deve stare alto all'avvio: se usi il WROOM-32D, sposta l'ingresso riserva su
-> GPIO 25/26/27/32/33 in `firmware/sensors_io.cpp`.
+La scheda di riferimento è l'**ESP32-S3** (su S3 i GPIO 22–26 sono riservati alla Flash Octal-SPI
+e alla PSRAM: per questo i sensori stanno su GPIO 4 e 5).
 
 | Segnale | Pin | Note |
 | --- | --- | --- |
+| IMU MPU-6050 | `GPIO 8` SDA · `GPIO 9` SCL | I²C a 400 kHz, alimentazione 3V3 |
+| GPS RX / TX | `GPIO 16` / `GPIO 17` | `Serial1`, 115200 baud |
 | Iniettore (RPM + consumo) | `GPIO 4` | interrupt su fronte di discesa, via PC817 |
 | Riserva carburante | `GPIO 5` | interrupt su cambio di stato, via PC817 |
-| GPS RX / TX | `GPIO 16` / `GPIO 17` | `Serial1`, 115200 baud |
-| IMU | I²C/SPI | da collegare quando il driver sarà scritto |
+
+I pin I²C si cambiano in `firmware/imu_kinematic.cpp` (`IMU_SDA_PIN` / `IMU_SCL_PIN`).
+
+> **Se usi un ESP32 classico (WROOM-32D)** invece dell'S3: lì **GPIO 5 è un pin di strapping** e
+> deve stare alto all'avvio, quindi sposta l'ingresso riserva su GPIO 25/26/27/32/33 in
+> `firmware/sensors_io.cpp`, e usa i pin I²C di default della tua scheda (di solito 21/22).
 
 > 🔌 **Prima di collegarlo alla moto**, leggi le note di sicurezza elettrica più sotto: il PC817
 > sull'iniettore vuole un **diodo 1N4148 in antiparallelo** al LED, e l'alimentazione va presa

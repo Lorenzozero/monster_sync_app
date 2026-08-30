@@ -588,13 +588,39 @@
               <p class="text-[11px] text-gray-400 mb-4">Pacchetti pre-compilati per Android e iOS, pronti per l'installazione diretta.</p>
               
               <div class="flex flex-col sm:flex-row gap-3">
-                <a href="monster_sync_app.apk" download class="flex-1 text-center px-4 py-3 bg-cyan-400 text-black hover:bg-white font-orbitron text-[10px] tracking-widest font-black transition-all rounded shadow-[0_0_15px_rgba(0,229,255,0.2)]">
+                <a href="https://github.com/Lorenzozero/monster_sync_app/releases/latest/download/monster_sync_app.apk" class="flex-1 text-center px-4 py-3 bg-cyan-400 text-black hover:bg-white font-orbitron text-[10px] tracking-widest font-black transition-all rounded shadow-[0_0_15px_rgba(0,229,255,0.2)]">
                   DOWNLOAD APK (ANDROID)
                 </a>
-                <a href="monster_sync_app.ipa" download class="flex-grow text-center px-4 py-3 border border-cyan-400/40 text-cyan-400 hover:bg-cyan-400 hover:text-black font-orbitron text-[10px] tracking-widest font-black transition-all rounded">
+                <a href="https://github.com/Lorenzozero/monster_sync_app/releases/latest" class="flex-grow text-center px-4 py-3 border border-cyan-400/40 text-cyan-400 hover:bg-cyan-400 hover:text-black font-orbitron text-[10px] tracking-widest font-black transition-all rounded">
                   DOWNLOAD IPA (IPHONE)
                 </a>
               </div>
+            </div>
+
+            <div class="border-t border-cyan-500/10 pt-6">
+              <h3 class="font-orbitron text-xs tracking-wider text-cyan-400 font-bold mb-2">FIRMWARE CENTRALINA — PRONTO DA FLASHARE</h3>
+              <p class="text-[11px] text-gray-400 mb-4">
+                Sketch Arduino completo per <strong class="text-cyan-400">ESP32-S3</strong>: BLE, GPS 10 Hz, ingressi optoisolati
+                e stima dell'angolo di piega. Dentro lo zip c'è il <strong>LEGGIMI</strong> con librerie, mappa dei pin e
+                procedura di upload, passo per passo.
+              </p>
+
+              <a href="monstersync-firmware-esp32s3.zip" download class="inline-flex items-center gap-2 px-5 py-3 bg-red-500 text-white hover:bg-white hover:text-black font-orbitron text-[10px] tracking-widest font-black transition-all rounded shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                ⚡ SCARICA FIRMWARE ESP32-S3 (.ZIP)
+              </a>
+
+              <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-gray-400 font-mono">
+                <div class="bg-black/30 border border-white/5 rounded p-2"><span class="text-cyan-400">IMU</span><br>SDA 8 · SCL 9</div>
+                <div class="bg-black/30 border border-white/5 rounded p-2"><span class="text-cyan-400">GPS</span><br>RX 16 · TX 17</div>
+                <div class="bg-black/30 border border-white/5 rounded p-2"><span class="text-cyan-400">INIETTORE</span><br>GPIO 4</div>
+                <div class="bg-black/30 border border-white/5 rounded p-2"><span class="text-cyan-400">RISERVA</span><br>GPIO 5</div>
+              </div>
+
+              <p class="mt-4 text-[10px] text-red-400/80 leading-relaxed">
+                ⚠️ Prima di collegarlo alla moto: il pressostato olio originale non si rimuove mai · diodo 1N4148 in
+                antiparallelo al LED di ogni PC817 sull'iniettore (regge 6 V inversi, il flyback ne fa 60-100) ·
+                alimentazione sotto chiave con fusibile 1 A · l'LM2596 regge 40 V e non ha protezione da load dump.
+              </p>
             </div>
 
             <div class="border-t border-cyan-500/10 pt-4 space-y-3">

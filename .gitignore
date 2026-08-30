@@ -49,3 +49,9 @@ app.*.map.json
 
 # Sessioni del compilatore Kotlin (artefatto di build)
 android/.kotlin/
+
+# Binari: distribuiti come Release asset, non versionati
+docs/*.apk
+docs/*.ipa
+*.apk
+*.ipa
