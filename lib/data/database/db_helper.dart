@@ -21,7 +21,7 @@ class DbHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE rides (
@@ -37,9 +37,13 @@ class DbHelper {
             rpm TEXT
           )
         ''');
+        await _createVehicleIdentity(db);
         await _insertDemoRides(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          await _createVehicleIdentity(db);
+        }
         if (oldVersion < 2) {
           // Aggiunge la colonna km numerica se non esiste
           try {
@@ -59,6 +63,55 @@ class DbHelper {
         }
       },
     );
+  }
+
+  // ── Identità veicolo ────────────────────────────────────────────────────────
+  // Targa, telaio, intestatario e data di immatricolazione sono dati personali:
+  // vivono SOLO in questo database, sul dispositivo. Il sorgente (pubblico su
+  // GitHub) contiene esclusivamente i segnaposto qui sotto.
+  static const Map<String, String> identityPlaceholders = {
+    'targa': '— — —',
+    'telaio': '— — —',
+    'intestatario': '— — —',
+    'immatricolazione': '— — —',
+  };
+
+  static Future<void> _createVehicleIdentity(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS vehicle_identity (
+        k TEXT PRIMARY KEY,
+        v TEXT
+      )
+    ''');
+    for (final e in identityPlaceholders.entries) {
+      await db.insert('vehicle_identity', {'k': e.key, 'v': e.value},
+          conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+  }
+
+  /// Ritorna l'identità del veicolo, con i segnaposto per i campi non compilati.
+  Future<Map<String, String>> getVehicleIdentity() async {
+    final db = await database;
+    final out = Map<String, String>.from(identityPlaceholders);
+    try {
+      final rows = await db.query('vehicle_identity');
+      for (final r in rows) {
+        final k = r['k'] as String?;
+        final v = r['v'] as String?;
+        if (k != null && v != null && v.trim().isNotEmpty) out[k] = v;
+      }
+    } catch (_) {
+      // tabella non ancora presente: restano i segnaposto
+    }
+    return out;
+  }
+
+  Future<void> setVehicleIdentity(Map<String, String> values) async {
+    final db = await database;
+    for (final e in values.entries) {
+      await db.insert('vehicle_identity', {'k': e.key, 'v': e.value.trim()},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
   }
 
   Future<void> _insertDemoRides(Database db) async {

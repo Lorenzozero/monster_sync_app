@@ -209,6 +209,9 @@ class _LibrettoViewState extends State<LibrettoView>
   String _bolloScadenza = '31.01.2027';
   String _rcaScadenza = '10.08.2027';
 
+  /// Dati personali del veicolo: vivono solo nel DB locale, mai nel sorgente.
+  Map<String, String> _identity = Map.from(DbHelper.identityPlaceholders);
+
   @override
   void initState() {
     super.initState();
@@ -230,6 +233,7 @@ class _LibrettoViewState extends State<LibrettoView>
     _revisioneProssima = _prefs?.getString('scad_revisione_prossima') ?? '26.09.2026';
     _bolloScadenza = _prefs?.getString('scad_bollo') ?? '31.01.2027';
     _rcaScadenza = _prefs?.getString('scad_rca') ?? '10.08.2027';
+    _identity = await DbHelper().getVehicleIdentity();
     if (mounted) setState(() {});
   }
 
@@ -507,6 +511,89 @@ class _LibrettoViewState extends State<LibrettoView>
     await _prefs?.setString('scad_rca', date);
   }
 
+  /// Compila targa, telaio, intestatario e immatricolazione. Restano sul
+  /// dispositivo (tabella `vehicle_identity`): non finiscono mai nel repository.
+  Future<void> _editIdentity() async {
+    final ctl = {
+      for (final k in DbHelper.identityPlaceholders.keys)
+        k: TextEditingController(
+            text: _identity[k] == DbHelper.identityPlaceholders[k]
+                ? ''
+                : _identity[k]),
+    };
+
+    Widget field(String key, String label, {TextCapitalization caps = TextCapitalization.characters}) =>
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: TextField(
+            controller: ctl[key],
+            textCapitalization: caps,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: AppTheme.orbitronLabel
+                  .copyWith(fontSize: 10, color: AppTheme.activeCyan),
+              enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.2))),
+              focusedBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: AppTheme.activeCyan)),
+            ),
+          ),
+        );
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.panelBg,
+        title: Text('IDENTIFICAZIONE VEICOLO',
+            style: AppTheme.orbitronLabel
+                .copyWith(fontSize: 12, color: AppTheme.activeCyan)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              field('targa', 'TARGA'),
+              field('telaio', 'TELAIO (VIN)'),
+              field('intestatario', 'INTESTATARIO'),
+              field('immatricolazione', 'IMMATRICOLAZIONE (gg.mm.aaaa)',
+                  caps: TextCapitalization.none),
+              const SizedBox(height: 4),
+              Text(
+                'Restano solo su questo telefono: non vengono caricati da nessuna parte.',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.5), fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('ANNULLA',
+                  style: TextStyle(color: Colors.white54))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('SALVA',
+                  style: TextStyle(color: AppTheme.activeCyan))),
+        ],
+      ),
+    );
+
+    if (saved == true) {
+      final values = {
+        for (final e in ctl.entries) e.key: e.value.text.trim(),
+      }..removeWhere((_, v) => v.isEmpty);
+      if (values.isNotEmpty) {
+        await DbHelper().setVehicleIdentity(values);
+        final fresh = await DbHelper().getVehicleIdentity();
+        if (mounted) setState(() => _identity = fresh);
+      }
+    }
+    for (final c in ctl.values) {
+      c.dispose();
+    }
+  }
+
   // ── BUILD ────────────────────────────────────────────────────────────────────
 
   @override
@@ -591,14 +678,14 @@ class _LibrettoViewState extends State<LibrettoView>
   Widget _buildLibrettoTab() => ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 95),
         children: [
-          _sectionHeader('IDENTIFICAZIONE VEICOLO'),
+          _sectionHeaderWithEdit('IDENTIFICAZIONE VEICOLO', _editIdentity),
           _card([
-            _row('Targa:', 'TARGA_RIMOSSA', cyan: true),
-            _row('Telaio:', 'TELAIO_RIMOSSO'),
+            _row('Targa:', _identity['targa']!, cyan: true),
+            _row('Telaio:', _identity['telaio']!),
             _row('Modello:', 'DUCATI MONSTER 695'),
             _row('Versione:', 'M4 VAR.20 VERS.AA'),
-            _row('Intestatario:', 'INTESTATARIO_RIMOSSO'),
-            _row('Immatric.:', '06.11.2007'),
+            _row('Intestatario:', _identity['intestatario']!),
+            _row('Immatric.:', _identity['immatricolazione']!),
           ]),
           const SizedBox(height: 14),
           _sectionHeader('SPECIFICHE TECNICHE'),

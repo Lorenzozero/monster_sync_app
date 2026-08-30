@@ -47,6 +47,91 @@ Per far funzionare la telemetria sulla moto, devi assemblare la centralina custo
 
 ---
 
+## ⚡ Il Firmware: Compilazione e Flash dell'ESP32
+
+Il codice della centralina sta in [`firmware/`](firmware/). È un progetto **Arduino + FreeRTOS**
+diviso in quattro moduli: `imu_kinematic` (angolo di piega), `gps_parser` (NMEA), `ble_server`
+(server GATT) e `sensors_io` (ingressi optoisolati).
+
+> ⚠️ **Stato reale**: BLE, GPS e ingressi digitali funzionano. Il **driver dell'IMU non è ancora
+> scritto** (`IMU_Init()` è un TODO): la fusione cinematica c'è, ma non legge ancora il sensore.
+> Il firmware compila e trasmette, non è ancora una telemetria completa.
+
+### 🛠️ Ambiente
+
+1.  **Arduino IDE 2.x** (o PlatformIO).
+2.  Aggiungi il supporto ESP32: *Preferenze → URL Gestore schede aggiuntive* →
+    `https://espressif.github.io/arduino-esp32/package_esp32_index.json`, poi installa
+    **esp32 by Espressif Systems** dal Gestore schede.
+3.  Installa dal Gestore librerie: **TinyGPSPlus** (di Mikal Hart).
+    `WiFi`, `HTTPClient` e lo stack `BLEDevice` sono già inclusi nel core ESP32.
+
+### 📌 Scheda e pin
+
+I commenti nel codice sono tarati su un **ESP32-S3-WROOM-1** (GPIO 22–26 sono riservati alla
+Flash Octal-SPI e alla PSRAM, per questo i sensori stanno su GPIO 4 e 5).
+
+> **Nota**: la BOM qui sopra elenca un ESP32 classico (WROOM-32D). Su quel chip **GPIO 5 è un pin
+> di strapping** e deve stare alto all'avvio: se usi il WROOM-32D, sposta l'ingresso riserva su
+> GPIO 25/26/27/32/33 in `firmware/sensors_io.cpp`.
+
+| Segnale | Pin | Note |
+| --- | --- | --- |
+| Iniettore (RPM + consumo) | `GPIO 4` | interrupt su fronte di discesa, via PC817 |
+| Riserva carburante | `GPIO 5` | interrupt su cambio di stato, via PC817 |
+| GPS RX / TX | `GPIO 16` / `GPIO 17` | `Serial1`, 115200 baud |
+| IMU | I²C/SPI | da collegare quando il driver sarà scritto |
+
+> 🔌 **Prima di collegarlo alla moto**, leggi le note di sicurezza elettrica più sotto: il PC817
+> sull'iniettore vuole un **diodo 1N4148 in antiparallelo** al LED, e l'alimentazione va presa
+> **sotto chiave**, fusibilata.
+
+### 🚀 Flash
+
+1.  Apri `firmware/MonsterSync.ino` nell'IDE (gli altri file si aprono da soli come tab).
+2.  Seleziona la scheda (*ESP32S3 Dev Module* oppure *ESP32 Dev Module*) e la porta COM.
+3.  Se usi l'S3 con PSRAM: *Tools → PSRAM → OPI PSRAM*.
+4.  **Upload**. Apri il monitor seriale a **115200** per vedere l'inizializzazione dei task.
+
+### 📡 Wi-Fi opzionale (upload verso il backend)
+
+In cima a `MonsterSync.ino`:
+
+```cpp
+const char* ssid      = "IlTuoHotspot";     // lascia così per tenere il Wi-Fi spento
+const char* password  = "LaTuaPassword";
+const char* serverUrl = "http://192.168.1.100:8000/telemetry";
+```
+
+Finché l'SSID resta il segnaposto, il firmware **non tenta la connessione**. È voluto: una
+scansione Wi-Fi che fallisce in loop occupa al 100% l'antenna condivisa a 2.4 GHz e **l'advertising
+BLE non va mai in onda** — il dispositivo sparisce dall'app pur essendo acceso.
+
+### 🔌 Sicurezza elettrica prima di montarlo sulla moto
+
+Sette regole. Le prime due proteggono il motore, le altre l'elettronica.
+
+1.  **Il pressostato olio originale non si rimuove mai.** Se in futuro aggiungi un trasduttore di
+    pressione analogico, va su un **raccordo a T**, in parallelo: la spia rossa è l'unica
+    protezione reale del motore.
+2.  **Non toccare il circuito di accensione né l'antenna dell'immobilizer.**
+3.  **Diodo 1N4148 in antiparallelo** al LED di ogni PC817 collegato all'iniettore. Il PC817 regge
+    **6 V inversi**; il flyback induttivo dell'iniettore ne produce 60–100. Senza il diodo il LED
+    muore, magari dopo qualche ora di funzionamento.
+4.  **Protezione dell'alimentazione.** L'**LM2596** della BOM accetta **40 V massimi e non ha
+    protezione da load dump**: sui Monster il regolatore/raddrizzatore è un punto debole noto, e
+    quando cede può superarli — con il rischio che il buck si guasti in corto e mandi i 12 V
+    all'ESP32. Aggiungi almeno **TVS (SMAJ33A) + fusibile + MOSFET anti-inversione**, oppure usa un
+    buck automotive tipo **LM5164** (65 V di ingresso).
+5.  **Alimentazione sotto chiave**, con fusibile da 1 A a monte. La batteria da 10 Ah non regge un
+    assorbimento permanente a moto ferma.
+6.  **IMU su supporto smorzante** (silicone/sorbothane). Un Desmodue vibra: montata rigida falsa i
+    dati e rompe le saldature. Niente breadboard, niente dupont, connettori con ritenuta.
+7.  **Tutto reversibile.** L'impianto dev'essere riportabile all'originale in un'ora: derivazioni
+    con connettori, mai tagli o rubacorrente sul cablaggio motore.
+
+---
+
 ## 📱 L'Applicazione Flutter: Compilazione APK ed IPA
 
 L'app è sviluppata in **Flutter** con un design cyberpunk metallico nero e ciano neon, ottimizzato per l'uso in moto (pulsanti giganti, testi ad alta leggibilità, allarmi cromatici).

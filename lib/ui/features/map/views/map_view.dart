@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../core/theme.dart';
 import '../../dashboard/view_models/dashboard_view_model.dart';
 import '../../../widgets/value_tooltip.dart';
@@ -225,30 +226,50 @@ class _MapViewState extends State<MapView> {
                             ),
                             MarkerLayer(
                               markers: [
+                                // Posizione attuale: modello 3D reale della moto,
+                                // stesso rig del cruscotto landscape.
                                 Marker(
                                   point: _lastCoord,
-                                  width: 40,
-                                  height: 40,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.activeCyan.withOpacity(0.2),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: AppTheme.activeCyan, width: 2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppTheme.activeCyan.withOpacity(0.5),
-                                          blurRadius: 10,
-                                          spreadRadius: 2,
-                                        )
-                                      ],
-                                    ),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.motorcycle,
-                                        color: Colors.white,
-                                        size: 20,
+                                  width: 90,
+                                  height: 90,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Alone di localizzazione sotto la moto
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.activeCyan.withOpacity(0.18),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: AppTheme.activeCyan.withOpacity(0.7), width: 2),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.activeCyan.withOpacity(0.5),
+                                              blurRadius: 12,
+                                              spreadRadius: 2,
+                                            )
+                                          ],
+                                        ),
                                       ),
-                                    ),
+                                      const IgnorePointer(
+                                        child: SizedBox(
+                                          width: 70,
+                                          height: 70,
+                                          child: ModelViewer(
+                                            src: 'assets/ducati_monster_3d.glb',
+                                            alt: 'Ducati 3D Model',
+                                            cameraControls: false,
+                                            disableZoom: true,
+                                            autoRotate: false,
+                                            cameraOrbit: '165deg 75deg 70%',
+                                            shadowIntensity: 0.0,
+                                            backgroundColor: Colors.transparent,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
