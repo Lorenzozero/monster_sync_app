@@ -300,20 +300,30 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
             ),
             children: [
-              // Cartografia già scura (CartoDB Dark Matter, gratuita e senza API key).
-              // Prima si invertiva la mappa chiara di OSM con una ColorFilter.matrix:
-              // il risultato era viola e con le strade illeggibili. Una basemap nata
-              // scura ha strade chiare su fondo scuro, che è esattamente ciò che serve
-              // di notte in moto.
-              TileLayer(
-                urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'com.example.monster_sync_app',
-                // Con la mappa ruotata servono tile oltre il bordo visibile,
-                // altrimenti agli angoli resta il fondo scoperto.
-                panBuffer: 2,
-                keepBuffer: 5,
+              // Tema scuro da OSM: INVERSIONE + ROTAZIONE DI TINTA DI 180°.
+              //
+              // La sola inversione (com'era prima) ribalta anche la tinta: il verde
+              // dei parchi diventa viola e le strade illeggibili. Ruotando la tinta
+              // di 180° dopo l'inversione, ogni colore torna al suo (il verde resta
+              // verde, scuro) e si ottiene un vero tema notturno.
+              //
+              // CartoDB Dark Matter sarebbe più bella ma ora pretende una API key:
+              // senza chiave serve tile con la scritta "API KEY REQUIRED" sopra.
+              ColorFiltered(
+                colorFilter: const ColorFilter.matrix([
+                   0.574, -1.430, -0.144, 0, 255,
+                  -0.426, -0.430, -0.144, 0, 255,
+                  -0.426, -1.430,  0.856, 0, 255,
+                   0.0,    0.0,    0.0,   1, 0,
+                ]),
+                child: TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.monster_sync_app',
+                  // Con la mappa ruotata servono tile oltre il bordo visibile,
+                  // altrimenti agli angoli resta il fondo scoperto.
+                  panBuffer: 2,
+                  keepBuffer: 5,
+                ),
               ),
 
               // Polilinee di Navigazione (Rotta)
@@ -337,8 +347,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   // 1. Moto (Posizione Attuale con Modello 3D reale che naviga)
                   Marker(
                     point: _myLocation,
-                    width: 90,
-                    height: 90,
+                    width: 130,
+                    height: 130,
+                    alignment: Alignment.center, // il centro del modello sul punto GPS
+                    // Il marker NON ruota con la mappa: resta allineato allo schermo,
+                    // così la moto punta sempre verso l'alto — la vista che hai
+                    // davvero quando ci sei sopra.
+                    rotate: true,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -346,15 +361,19 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                         _RippleRing(),
                         IgnorePointer(
                           child: SizedBox(
-                            width: 70,
-                            height: 70,
+                            width: 110,
+                            height: 110,
                             child: ModelViewer(
                               src: 'assets/ducati_monster_3d.glb',
                               alt: 'Ducati 3D Model',
                               cameraControls: false,
                               disableZoom: true,
                               autoRotate: false,
-                              cameraOrbit: '165deg 75deg 70%',
+                              // Vista dall'alto e leggermente da dietro, come se
+                              // fossi in sella: phi basso = quasi a piombo.
+                              // Se la moto risultasse girata al contrario, cambia
+                              // il primo valore da 0deg a 180deg.
+                              cameraOrbit: '0deg 22deg 65%',
                               shadowIntensity: 0.0,
                               backgroundColor: Colors.transparent,
                             ),
@@ -461,65 +480,11 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             ),
           ),
 
-          // ── LEFT HUD (Stato Rider: Marcia, Serbatoio, Autonomia, Velocità) ──
-          Positioned(
-            left: 12,
-            bottom: 12,
-            child: Container(
-              width: 170,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // La marcia non sta piu' qui: e' sulla barra verticale a destra,
-                  // dove il pollice la trova senza spostare lo sguardo dalla strada.
-
-                  // Autonomia
-                  Row(
-                    children: [
-                      const Icon(Icons.local_gas_station, color: Colors.amber, size: 16),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "AUTONOMIA",
-                            style: GoogleFonts.orbitron(
-                              fontSize: 8,
-                              color: AppTheme.textMuted,
-                            ),
-                          ),
-                          Text(
-                            "${telemetry.autonomy.toInt()} KM",
-                            style: GoogleFonts.orbitron(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  // Serbatoio spostato in alto a destra, accanto alla barra marce.
-                  // Comune e avviso pioggia spostati sotto i gradi, nel chip meteo
-                  // in basso a destra: tutto il meteo in un posto solo.
-                ],
-              ),
-            ),
-          ),
-
-          // ── SERBATOIO (in alto a destra, a fianco della barra delle marce) ──
+          // ── CARBURANTE (angolo in alto a sinistra: serbatoio + autonomia) ──
           Positioned(
             top: 12,
-            right: 60, // 48 della barra marce + margine
-            width: 150,
+            left: 12,
+            width: 170,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
@@ -581,17 +546,52 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       );
                     }),
                   ),
+                  const SizedBox(height: 8),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 8),
+                  // Autonomia, nello stesso riquadro del serbatoio
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "AUTONOMIA",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 8,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        "${telemetry.autonomy.toInt()}",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        "KM",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
 
-          // Attribuzione cartografica: piccola ma dovuta (OSM/CARTO)
+          // Attribuzione cartografica: piccola ma dovuta (OpenStreetMap)
           Positioned(
             left: 16,
-            top: 6,
+            bottom: 2,
             child: Text(
-              "© OpenStreetMap · CARTO",
+              "© OpenStreetMap contributors",
               style: GoogleFonts.orbitron(
                 fontSize: 6,
                 color: Colors.white.withOpacity(0.35),
