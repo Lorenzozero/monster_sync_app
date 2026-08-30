@@ -220,7 +220,19 @@ tl.to(viewerParams, {
   display: "flex",
   duration: 1
 }, "<")
-// Stage 7: Hardware -> Mockup Mobile (Moto riappare su desktop, scompare su mobile; Tabella scompare)
+// La tabella scivola verso l'alto e scompare ruotando in avanti, venendo poi nascosta completamente (display: none)
+.to(tableAnimTarget, {
+  opacity: 0,
+  y: -80,
+  rotationX: -18,
+  scale: 0.85,
+  pointerEvents: "none",
+  display: "none",
+  duration: 0.8
+})
+// Pausa di scorrimento vuota (la tabella è sparita, il mockup non è ancora iniziato)
+.to({}, { duration: 0.5 })
+// Stage 7: Hardware -> Mockup Mobile (Moto riappare su desktop, scompare su mobile)
 .to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 55,
@@ -244,16 +256,6 @@ tl.to(viewerParams, {
   },
   duration: 1
 })
-// La tabella scivola verso l'alto e scompare ruotando in avanti, venendo poi nascosta completamente (display: none)
-.to(tableAnimTarget, {
-  opacity: 0,
-  y: -80,
-  rotationX: -18,
-  scale: 0.85,
-  pointerEvents: "none",
-  display: "none",
-  duration: 0.3
-}, "<")
 // Stage 8: Mockup -> Download finale (Rotazione finale cinematografica su desktop, nascosta su mobile)
 .to(viewerParams, {
   orbitTheta: -195,
