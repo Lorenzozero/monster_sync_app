@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -7,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 
@@ -168,6 +171,16 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     }
   }
 
+  // Controlla se la rete internet è attiva
+  Future<bool> _isNetworkAvailable() async {
+    try {
+      final result = await InternetAddress.lookup('dns.google').timeout(const Duration(seconds: 1));
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Elabora il comando vocale dell'utente
   void _processVoiceCommand(String command) async {
     _speech.stop();
@@ -179,26 +192,46 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       setState(() {
         _isListening = false;
         _assistantText = "Comando ricevuto: '$command'";
-        _navigationActive = true;
-        // Traccia la rotta verso il distributore IP
-        _routePoints = [
-          _myLocation,
-          const LatLng(43.9980, 11.6450), // Passa dall'autovelox
-          _gasStationLocation,
-        ];
       });
 
-      // Annuncia il risultato tramite sintesi vocale (TTS)
-      await _tts.speak(
-        "Trovato distributore IP a novecento metri. Avvio navigazione con allerta autovelox attiva sulla rotta."
-      );
+      // Controlla disponibilità rete
+      final hasNet = await _isNetworkAvailable();
 
-      // Centra e zooma la mappa per mostrare la rotta
-      _mapController.move(LatLng(
-        (_myLocation.latitude + _gasStationLocation.latitude) / 2,
-        (_myLocation.longitude + _gasStationLocation.longitude) / 2,
-      ), 14.5);
+      if (hasNet) {
+        // Se c'è rete, usa Waze
+        final wazeUrl = Uri.parse("waze://?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
+        final webUrl = Uri.parse("https://waze.com/ul?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
+        
+        await _tts.speak("Rete rilevata. Avvio navigazione su Waze verso il distributore.");
+        
+        if (await canLaunchUrl(wazeUrl)) {
+          await launchUrl(wazeUrl);
+        } else {
+          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+        }
+      } else {
+        // Nessuna rete -> usa mappa offline
+        setState(() {
+          _navigationActive = true;
+          // Traccia la rotta verso il distributore IP
+          _routePoints = [
+            _myLocation,
+            const LatLng(43.9980, 11.6450), // Passa dall'autovelox
+            _gasStationLocation,
+          ];
+        });
 
+        // Annuncia il risultato tramite sintesi vocale (TTS)
+        await _tts.speak(
+          "Nessuna rete. Avvio navigazione offline sulla mappa locale con allerta autovelox attiva sulla rotta."
+        );
+
+        // Centra e zooma la mappa per mostrare la rotta
+        _mapController.move(LatLng(
+          (_myLocation.latitude + _gasStationLocation.latitude) / 2,
+          (_myLocation.longitude + _gasStationLocation.longitude) / 2,
+        ), 14.5);
+      }
     } else {
       setState(() {
         _isListening = false;
@@ -225,10 +258,18 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               maxZoom: 18.0,
             ),
             children: [
-              // Mappa Dark Cyberpunk
-              TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+              // Mappa Dark Cyberpunk (OSM Gratuita + ColorFiltered per inversione/tonalità ciano senza watermark)
+              ColorFiltered(
+                colorFilter: const ColorFilter.matrix([
+                  -1.0,  0.0,  0.0, 0.0, 255,
+                   0.0, -1.0,  0.0, 0.0, 255,
+                   0.0,  0.0, -0.8, 0.0, 200,
+                   0.0,  0.0,  0.0, 1.0, 0,
+                ]),
+                child: TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.monster_sync_app',
+                ),
               ),
               
               // Polilinee di Navigazione (Rotta)
@@ -246,33 +287,35 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ],
                 ),
 
-              // Marcatori sulla mappa (Posizione moto, Autovelox, Distributori)
+              // Marcatori sulla mappa (Posizione moto con Modello 3D, Autovelox, Distributori)
               MarkerLayer(
                 markers: [
-                  // 1. Moto (Posizione Attuale)
+                  // 1. Moto (Posizione Attuale con Modello 3D reale che naviga)
                   Marker(
                     point: _myLocation,
-                    width: 46,
-                    height: 46,
+                    width: 90,
+                    height: 90,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.activeCyan.withOpacity(0.2),
-                            border: Border.all(color: AppTheme.activeCyan, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.navigation,
-                            color: AppTheme.activeCyan,
-                            size: 18,
+                        // Effetto onda di localizzazione pulsante sotto la moto
+                        _RippleRing(),
+                        IgnorePointer(
+                          child: SizedBox(
+                            width: 70,
+                            height: 70,
+                            child: ModelViewer(
+                              src: 'assets/ducati_monster_3d.glb',
+                              alt: 'Ducati 3D Model',
+                              cameraControls: false,
+                              disableZoom: true,
+                              autoRotate: false,
+                              cameraOrbit: '165deg 75deg 70%',
+                              shadowIntensity: 0.0,
+                              backgroundColor: Colors.transparent,
+                            ),
                           ),
                         ),
-                        // Effetto onda di localizzazione pulsante
-                        _RippleRing(),
                       ],
                     ),
                   ),
@@ -343,9 +386,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Meteo ed avvisi pioggia
+                // Meteo solo icona e gradi
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.85),
                     borderRadius: BorderRadius.circular(20),
@@ -353,15 +396,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cloudy_snowing, color: AppTheme.activeCyan, size: 16),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 16),
+                      const SizedBox(width: 6),
                       Text(
-                        "METEO PASSO DEL MURAGLIONE: 22°C - AVVISO PIOGGIA TRA 15 MIN ⚠️",
+                        "22°C",
                         style: GoogleFonts.orbitron(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
-                          letterSpacing: 1.0,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -565,6 +608,38 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       ),
                     ],
                   ),
+                  const Divider(color: Colors.white10),
+
+                  // Meteo dettagliato: paese + avviso pioggia
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 14),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "S. GODENZO (FI)",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              "PIOGGIA TRA 15 MIN ⚠️",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 7,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.alertRed,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -609,6 +684,45 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                           _isListening ? Icons.mic : Icons.mic_none,
                           color: _isListening ? AppTheme.alertRed : AppTheme.activeCyan,
                           size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Pulsante Navigazione Waze Rapido
+                  GestureDetector(
+                    onTap: () async {
+                      final wazeUrl = Uri.parse("waze://?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
+                      final webUrl = Uri.parse("https://waze.com/ul?ll=${_gasStationLocation.latitude},${_gasStationLocation.longitude}&navigate=yes");
+                      if (await canLaunchUrl(wazeUrl)) {
+                        await launchUrl(wazeUrl);
+                      } else {
+                        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.amber,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.amber.withOpacity(0.2),
+                            blurRadius: 8,
+                          )
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.navigation,
+                          color: Colors.amber,
+                          size: 22,
                         ),
                       ),
                     ),

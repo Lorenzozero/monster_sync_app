@@ -18,7 +18,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
-  String _notificationIcon = 'ic_notification_png';
+  String _notificationIcon = 'ic_notification';
 
   // ── ID canali ────────────────────────────────────────────────────────────────
   static const String _channelIdScadenze = 'monstersync_scadenze_v6';
@@ -31,7 +31,7 @@ class NotificationService {
     // 1. Impostazioni init per piattaforma usando l'icona silhouette per la status bar
     try {
       const AndroidInitializationSettings androidInit =
-          AndroidInitializationSettings('ic_notification_png');
+          AndroidInitializationSettings('ic_notification');
 
       const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -46,13 +46,13 @@ class NotificationService {
         const InitializationSettings(android: androidInit, iOS: iosInit),
         onDidReceiveNotificationResponse: (_) {},
       );
-      _notificationIcon = 'ic_notification_png';
-      debugPrint("NotificationService: inizializzato con successo usando ic_notification_png");
+      _notificationIcon = 'ic_notification';
+      debugPrint("NotificationService: inizializzato con successo usando ic_notification");
     } catch (e) {
-      debugPrint("Errore inizializzazione con ic_notification_png: $e. Provo fallback su ic_notification_png...");
+      debugPrint("Errore inizializzazione con ic_notification: $e. Provo fallback...");
       try {
         const AndroidInitializationSettings androidInitFallback =
-            AndroidInitializationSettings('ic_notification_png');
+            AndroidInitializationSettings('ic_notification');
         await _plugin.initialize(
           const InitializationSettings(android: androidInitFallback, iOS: const DarwinInitializationSettings(
             requestAlertPermission: true,
@@ -61,8 +61,8 @@ class NotificationService {
           )),
           onDidReceiveNotificationResponse: (_) {},
         );
-        _notificationIcon = 'ic_notification_png';
-        debugPrint("NotificationService: inizializzato con successo usando fallback ic_notification_png");
+        _notificationIcon = 'ic_notification';
+        debugPrint("NotificationService: inizializzato con successo usando fallback ic_notification");
       } catch (err) {
         debugPrint("Errore critico inizializzazione NotificationService: $err");
         _initialized = false;

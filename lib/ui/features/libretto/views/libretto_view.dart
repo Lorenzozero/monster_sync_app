@@ -676,15 +676,17 @@ class _LibrettoViewState extends State<LibrettoView>
                   setState(() {});
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: AppTheme.activeCyan.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    shape: BoxShape.circle,
                     border: Border.all(color: AppTheme.activeCyan.withValues(alpha: 0.3)),
                   ),
-                  child: Text('AGGIORNA',
-                      style: AppTheme.orbitronLabel
-                          .copyWith(fontSize: 8, color: AppTheme.activeCyan)),
+                  child: const Icon(
+                    Icons.sync,
+                    color: AppTheme.activeCyan,
+                    size: 14,
+                  ),
                 ),
               ),
             ],
