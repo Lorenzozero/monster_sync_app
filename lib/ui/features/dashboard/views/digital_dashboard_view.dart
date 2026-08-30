@@ -480,6 +480,67 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             ),
           ),
 
+
+          // ── METEO (angolo in alto a destra, a fianco della barra marce) ──
+          Positioned(
+            top: 12,
+            right: 60,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 15),
+                      const SizedBox(width: 5),
+                      Text(
+                        "22°C",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 11),
+                      const SizedBox(width: 3),
+                      Text(
+                        "S. GODENZO (FI)",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 7,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    "PIOGGIA TRA 15 MIN ⚠️",
+                    style: GoogleFonts.orbitron(
+                      fontSize: 7,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.alertRed,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // ── CARBURANTE (angolo in alto a sinistra: serbatoio + autonomia) ──
           Positioned(
             top: 12,
@@ -718,66 +779,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Meteo riposizionato in basso a destra
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Gradi
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              "22°C",
-                              style: GoogleFonts.orbitron(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        // Comune, sotto i gradi
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 11),
-                            const SizedBox(width: 3),
-                            Text(
-                              "S. GODENZO (FI)",
-                              style: GoogleFonts.orbitron(
-                                fontSize: 7,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        // Avviso pioggia
-                        Text(
-                          "PIOGGIA TRA 15 MIN ⚠️",
-                          style: GoogleFonts.orbitron(
-                            fontSize: 7,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.alertRed,
                           ),
                         ),
                       ],

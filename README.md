@@ -5,7 +5,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-v3.22.x-blue.svg)](https://flutter.dev)
 [![Landing Page](https://img.shields.io/badge/Landing--Page-Live%20on%20Vercel-red?style=flat&logo=vercel)](https://monster-sync-app.vercel.app)
 
-> **"Perché comprare una Panigale V4 da 30.000€ per avere i grafici delle pieghe quando puoi rischiare un cortocircuito sulla batteria di un Monster del 2007 con 22€ di schede comprate su AliExpress?"**
+> **"Perché comprare una Panigale V4 da 30.000€ per avere i grafici delle pieghe quando puoi rischiare un cortocircuito sulla batteria di un Monster del 2007 con 75€ di schede comprate su AliExpress?"**
 
 Benvenuto in **MonsterSync**, il progetto open-source nato per dare un cervello digitale a una moto che originariamente comunicava con il mondo solo tramite vibrazioni bullonarie, perdite d'olio regolamentari e fumo desmodromico.
 
@@ -22,13 +22,13 @@ Questa repository contiene l'applicazione mobile **Flutter** (collegata via Blue
 *   ⛽ **Controllo Carburante & Stima Autonomia**: Il serbatoio del Monster ha solo un sensore per la spia di riserva a 12V. Il circuito legge questo segnale isolandolo con un fotoaccoppiatore. Il software dell'app fa il resto, stimando un indicatore a 8 tacche e calcolando i chilometri residui di autonomia in base allo storico dei consumi e della distanza percorsa.
 *   📍 **Smart Vehicle Finder (Dove ho parcheggiato?)**: Se vai a un raduno affollato o parcheggi al Passo del Muraglione in mezzo a centinaia di moto e non ricordi dove sia la tua, l'app memorizza in automatico l'ultima coordinata GPS ricevuta dall'ESP32 prima che il quadro venisse spento, guidandoti a piedi fino alla moto.
 *   🗺️ **Mappe Termiche Pieghe Offline**: Tracciamento della traiettoria GPS a 10Hz visualizzato su una mappa termica reale tramite OpenStreetMap (funzionante offline). Colora in ciano le curve lente o prudenti e in rosso neon quelle ad alta piega (>30°).
-*   🌡️ **Allarme Olio Bollente (L-Twin Aria & Olio)**: Il motore 695cc non ha radiatore né liquido refrigerante. Quando superi i 115°C al semaforo estivo mentre ti si cuociono le cosce, l'app passa al colore rosso allarme per ricordarti che sei su una griglia semovente.
+*   🌡️ **Allarme Temperatura Testa (L-Twin Aria & Olio)**: Il motore 695cc non ha radiatore né liquido refrigerante, quindi l'unico modo che ha di smaltire calore è l'aria che gli passa sopra — e al semaforo non ne passa. La termocoppia sotto candela misura la testa verticale, quella che scalda di più, e l'app va in rosso quando superi la tua soglia. **La soglia è la tua**: si ricava registrando qualche giro normale, non copiandola da un forum.
 *   🔋 **Monitoraggio Tensione Batteria**: Un voltmetro in tempo reale. Chi possiede una Ducati sa che l'alternatore è un generatore di ansia e di guasti regolatori di tensione. Tieni d'occhio i volt prima di dover spingere la moto in salita.
 *   📋 **Scadenziario Burocratico & Manutenzioni**: Gestisci scadenze fiscali (Bollo, RCA, Revisione) e meccaniche (cinghie di distribuzione del Desmodue, tagliando, gioco valvole, olio) tramite database locale. Include notifiche native del sistema operativo Android/iOS per non dimenticare nulla.
 
 ---
 
-## 🛠️ L'Hardware "Fai da Te" (BOM ~50-60€)
+## 🛠️ L'Hardware "Fai da Te" (BOM ~75€)
 
 Per far funzionare la telemetria sulla moto, devi assemblare la centralina custom *MonsterSync-Brain* (da inserire sotto la sella o nel codone) utilizzando i seguenti componenti economici:
 
@@ -49,7 +49,30 @@ Per far funzionare la telemetria sulla moto, devi assemblare la centralina custo
     *   ⚠️ **L'LM2596 da solo non basta**: accetta 40V massimi e non ha protezione da *load dump*. Sui Monster il regolatore/raddrizzatore Shindengen è il punto debole noto, e quando cede può superarli — con il rischio che il buck si guasti in corto e mandi i 12V all'ESP32. Se scegli l'LM2596, aggiungi **TVS SMAJ33A + MOSFET P-channel anti-inversione** (~€2). L'LM5164 regge 65V ed è nato per l'automotive.
 6.  **Scatola Waterproof IP65 + Fusibile 1A + portafusibile volante** (~€3.80):
     *   *Scopo*: Alloggiamento impermeabile e protezione dai cortocircuiti.
-7.  **Cablaggio e minuteria** (~€15) — la voce che tutti dimenticano:
+7.  **Temperatura testa: termocoppia tipo K con anello sotto candela + MAX31855** (~€18):
+    *   *Scopo*: su un motore raffreddato ad aria la temperatura della testa è **il** parametro che
+        anticipa i guai, e risponde in secondi — l'olio ci mette minuti. Va sulla **testa
+        verticale**, quella dietro, che prende meno aria ed è la più calda.
+    *   *Perché così e non altrimenti*: l'anello si infila sotto la candela che c'è già, quindi
+        **nessuna modifica meccanica** e si torna indietro in dieci minuti (ricordandosi di
+        riserrare la candela a coppia). E soprattutto **non tocca la centralina**: il sensore di
+        temperatura testa della moto alimenta la Marelli 5AM e determina la carburazione — meglio
+        non metterci le mani.
+    *   ⚠️ **MAX31855, non MAX6675**: il 6675 è obsoleto e parte da 0 °C. In moto d'inverno serve
+        leggere anche sotto zero.
+    *   ⚠️ **La soglia di allarme non si copia da internet**: registra tre o quattro giri normali,
+        guarda dove si assesta la *tua* moto in autostrada e nel traffico, e metti l'allarme a
+        quella linea di base più una ventina di gradi.
+8.  **Lettura tensione batteria: due resistenze** (~€0.20):
+    *   *Scopo*: partitore **100 kΩ + 18 kΩ** verso un ingresso ADC — a 20 V d'ingresso escono
+        ~3,05 V, dentro il range dell'ESP32 con margine. Aggiungi un condensatore da 100 nF verso
+        massa per il rumore.
+    *   *Perché conta*: su queste Ducati il regolatore/raddrizzatore è il pezzo che cede. Vedere la
+        tensione a riposo e in carica ti fa scoprire il guasto **prima** di restare a piedi. È il
+        miglior rapporto valore/prezzo di tutto l'ordine.
+    *   *Nota*: l'ADC dell'ESP32 non è lineare agli estremi — tara la lettura una volta con un
+        multimetro e salva l'offset.
+9.  **Cablaggio e minuteria** (~€15) — la voce che tutti dimenticano:
     *   Cavo automotive, guaina, **connettori con ritenuta** (niente dupont sulla moto), fuse tap per la derivazione sotto chiave, resistenze 1kΩ e 10kΩ, millefori.
     *   **Supporto smorzante per l'IMU** (silicone o sorbothane): montata rigida su un bicilindrico, l'IMU falsa i dati e si spacca alle saldature.
     *   Un **cavo USB dati** (non solo ricarica) per flashare.
