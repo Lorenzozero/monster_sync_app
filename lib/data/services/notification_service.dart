@@ -31,7 +31,7 @@ class NotificationService {
     // 1. Impostazioni init per piattaforma usando l'icona silhouette per la status bar
     try {
       const AndroidInitializationSettings androidInit =
-          AndroidInitializationSettings('ic_notification');
+          AndroidInitializationSettings('@mipmap/ic_launcher');
 
       const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -46,27 +46,29 @@ class NotificationService {
         const InitializationSettings(android: androidInit, iOS: iosInit),
         onDidReceiveNotificationResponse: (_) {},
       );
-      _notificationIcon = 'ic_notification';
-      debugPrint("NotificationService: inizializzato con successo usando ic_notification");
+      _notificationIcon = '@mipmap/ic_launcher';
+      debugPrint("NotificationService: inizializzato con successo usando @mipmap/ic_launcher (scudetto Ducati)");
     } catch (e) {
-      debugPrint("Errore inizializzazione con ic_notification: $e. Provo fallback...");
+      debugPrint("Errore inizializzazione con ic_notification: $e. Provo fallback con ic_launcher...");
       try {
         const AndroidInitializationSettings androidInitFallback =
-            AndroidInitializationSettings('ic_notification');
+            AndroidInitializationSettings('@mipmap/ic_launcher');
         await _plugin.initialize(
-          const InitializationSettings(android: androidInitFallback, iOS: const DarwinInitializationSettings(
+          const InitializationSettings(android: androidInitFallback, iOS: DarwinInitializationSettings(
             requestAlertPermission: true,
             requestBadgePermission: true,
             requestSoundPermission: true,
           )),
           onDidReceiveNotificationResponse: (_) {},
         );
-        _notificationIcon = 'ic_notification';
-        debugPrint("NotificationService: inizializzato con successo usando fallback ic_notification");
+        _notificationIcon = '@mipmap/ic_launcher';
+        debugPrint("NotificationService: inizializzato con successo usando fallback @mipmap/ic_launcher");
       } catch (err) {
         debugPrint("Errore critico inizializzazione NotificationService: $err");
-        _initialized = false;
-        throw Exception("Inizializzazione fallita: $err");
+        // Non rilanciare: le notifiche non funzioneranno ma l'app resta stabile
+        _notificationIcon = '@mipmap/ic_launcher';
+        _initialized = true;
+        return;
       }
     }
 

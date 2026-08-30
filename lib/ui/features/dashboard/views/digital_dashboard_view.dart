@@ -36,7 +36,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   String _userSpeechResult = "";
   bool _navigationActive = false;
   int _currentGear = 3;
-  double _currentSpeed = 74.0;
+
   Timer? _telemetryTimer;
 
   // Stato per la visualizzazione temporanea del pulsante Chiudi (X) tramite swipe down
@@ -110,12 +110,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       duration: const Duration(seconds: 3),
     )..repeat();
 
-    // Simula telemetria attiva in marcia
+    // Simula telemetria attiva in marcia (solo cambio marcia)
     _telemetryTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (mounted) {
         setState(() {
-          // Cambia leggermente velocità ed eventualmente marcia
-          _currentSpeed = (70.0 + (timer.tick % 8) * 1.5).clamp(40.0, 130.0);
           if (timer.tick % 15 == 0) {
             _currentGear = (_currentGear == 3) ? 4 : 3;
           }
@@ -290,9 +288,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _myLocation,
-              initialZoom: 15.0,
-              minZoom: 10.0,
+              initialZoom: 17.0,   // Zoom alto stile Waze (vista ravvicinata sulla strada)
+              initialRotation: 15.0, // Rotazione per simulare la direzione di marcia (heading)
+              minZoom: 14.0,
               maxZoom: 18.0,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none, // Mappa bloccata sul rider come Waze in navigazione
+              ),
             ),
             children: [
               // Mappa Dark Cyberpunk (OSM Gratuita + ColorFiltered per inversione/tonalità ciano senza watermark)
@@ -315,11 +317,11 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   polylines: [
                     Polyline(
                       points: _routePoints,
-                      color: AppTheme.activeCyan,
-                      strokeWidth: 5.0,
+                      color: const Color(0xFF8B5CF6), // Viola stile Waze
+                      strokeWidth: 8.0,
                       isDotted: false,
-                      borderColor: Colors.blue.shade900,
-                      borderStrokeWidth: 2.0,
+                      borderColor: const Color(0xFF5B21B6),
+                      borderStrokeWidth: 3.0,
                     ),
                   ],
                 ),
@@ -473,69 +475,21 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                 children: [
                   // Marcia
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Icona ingranaggio/cambio marcia + numero
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.change_circle_outlined,
-                            color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _currentGear == 0 ? "N" : "$_currentGear",
-                            style: GoogleFonts.teko(
-                              fontSize: 54,
-                              fontWeight: FontWeight.bold,
-                              color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
-                              height: 0.9,
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        Icons.change_circle_outlined,
+                        color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
+                        size: 18,
                       ),
-                      // Mappa/R mode indicator
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.alertRed.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: AppTheme.alertRed),
-                        ),
-                        child: Text(
-                          "R-MODE",
-                          style: GoogleFonts.orbitron(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.alertRed,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white10),
-
-                  // Velocità istantanea (solo valore e unità di misura, senza etichetta di testo)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
+                      const SizedBox(width: 8),
                       Text(
-                        "${_currentSpeed.toInt()}",
+                        _currentGear == 0 ? "N" : "$_currentGear",
                         style: GoogleFonts.teko(
-                          fontSize: 36,
+                          fontSize: 54,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        "KM/H",
-                        style: GoogleFonts.orbitron(
-                          fontSize: 9,
-                          color: AppTheme.textMuted,
+                          color: _currentGear == 0 ? Colors.greenAccent : AppTheme.activeCyan,
+                          height: 0.9,
                         ),
                       ),
                     ],
@@ -656,7 +610,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           // ── BOTTOM WIDGET (Pannello Assistente Vocale / Stato Comandi) ──
           Positioned(
             bottom: 12,
-            right: 48, // Lascia spazio per la barra delle marce a destra
+            right: 60, // Lascia spazio per la barra delle marce a destra (48px + margine)
             left: 194,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -852,7 +806,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             top: 0,
             bottom: 0,
             right: 0,
-            width: 36,
+            width: 48,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.9),
@@ -891,7 +845,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                         child: Text(
                           g,
                           style: GoogleFonts.orbitron(
-                            fontSize: 12,
+                            fontSize: 18,
                             fontWeight: FontWeight.w900,
                             color: isActive ? activeColor : Colors.white24,
                           ),
