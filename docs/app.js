@@ -252,7 +252,7 @@ tl.to(viewerParams, {
   scale: 0.85,
   pointerEvents: "none",
   display: "none",
-  duration: 1
+  duration: 0.3
 }, "<")
 // Stage 8: Mockup -> Download finale (Rotazione finale cinematografica su desktop, nascosta su mobile)
 .to(viewerParams, {
