@@ -78,6 +78,7 @@
       <a href="#valori" class="hover:text-cyan-400 transition-colors">LOGGER</a>
       <a href="#motore" class="hover:text-cyan-400 transition-colors">MOTORE</a>
       <a href="#mockup" class="hover:text-cyan-400 transition-colors">APP HUD</a>
+      <a href="#copilota" class="hover:text-cyan-400 transition-colors">COPILOTA</a>
       <a href="#hardware" class="hover:text-cyan-400 transition-colors">HARDWARE</a>
       <a href="#download" class="hover:text-cyan-400 transition-colors">DOWNLOAD</a>
     </nav>
@@ -420,7 +421,51 @@
             Non solo pieghe fisiche, ma anche scadenze burocratiche. MonsterSync integra un database locale in `SharedPreferences` per gestire le date di scadenza di **Revisione Legale, Bollo e Polizza RCA**.
           </p>
           <p>
-            Puoi modificare le date a mano con un comodo DatePicker. E con il pulsante **TEST** puoi simulare la ricezione di notifiche push di sistema, verificate per non farti sequestrare il mezzo a causa di dimenticanze.
+            Puoi modificare le date a mano con un comodo DatePicker, e le notifiche di sistema arrivano da sole per non farti sequestrare il mezzo a causa di una dimenticanza. In cima alla lista c'è la voce che su un Desmodue conta più di tutte: le <strong class="text-white">cinghie di distribuzione</strong>, che scadono nel tempo prima che nei chilometri.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4.2: PACE NOTES + METEO + NAVIGAZIONE OFFLINE -->
+    <section id="copilota" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+        <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">05 / IL COPILOTA</span>
+        <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">PACE NOTES DA UN GPX</h2>
+        <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
+          <p>
+            Nel rally il copilota legge la curva <em>prima</em> che arrivi: <span class="text-cyan-400 font-bold">"destra 3, si stringe"</span>. Funziona da sessant'anni ed è più efficace di qualunque grafica, perché anticipa invece di sovrapporsi — e non ti occupa gli occhi.
+          </p>
+          <p>
+            Dai a MonsterSync un file GPX e ottieni esattamente quelle note: verso, quanto è stretta in scala 1-6, se si stringe o si apre, a che distanza è, e una velocità di riferimento. Il calcolo passa dalla curvatura di Menger su una traccia ricampionata, con la scala di misura scelta <strong class="text-white">per curva</strong>: base corta sui tornanti, base lunga sui curvoni, perché su raggio 200 m lo scostamento dalla retta è meno del rumore del GPS.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <div class="bg-black/40 border border-cyan-500/20 rounded-lg p-3">
+              <div class="font-orbitron text-[8px] text-cyan-400 tracking-wider mb-1">CURVE STRETTE</div>
+              <div class="font-teko text-3xl text-white leading-none">100%</div>
+              <div class="text-[10px] text-gray-500 mt-1">classi corrette anche con 3 m di errore GPS</div>
+            </div>
+            <div class="bg-black/40 border border-cyan-500/20 rounded-lg p-3">
+              <div class="font-orbitron text-[8px] text-cyan-400 tracking-wider mb-1">CURVONI</div>
+              <div class="font-teko text-3xl text-white leading-none">~80%</div>
+              <div class="text-[10px] text-gray-500 mt-1">con rumore realistico da 1,5 m</div>
+            </div>
+            <div class="bg-black/40 border border-red-500/20 rounded-lg p-3">
+              <div class="font-orbitron text-[8px] text-red-400 tracking-wider mb-1">REGOLA FISSA</div>
+              <div class="font-teko text-3xl text-white leading-none">SOLO</div>
+              <div class="text-[10px] text-gray-500 mt-1">"rallenta". Mai "puoi andare più forte"</div>
+            </div>
+          </div>
+
+          <p class="pt-2">
+            <strong class="text-white">E se ha piovuto, i numeri cambiano da soli.</strong> L'app interroga Open-Meteo — nessuna chiave API — e legge anche le <strong class="text-white">sei ore precedenti</strong> di precipitazione: è l'unico modo per sapere se l'asfalto è ancora bagnato. Ne ricava un fattore di aderenza che abbassa le velocità di riferimento di ogni curva, e sotto i 10 °C considera bagnato anche con poca pioggia, perché l'asfalto asciuga più lentamente. Sul cruscotto non compare la temperatura e basta, ma la condizione della strada.
+          </p>
+          <p>
+            <strong class="text-white">Per la navigazione vera non reinventiamo la ruota.</strong> L'app lancia <a href="https://osmand.net" target="_blank" rel="noopener" class="text-cyan-400 hover:text-white underline">OsmAnd</a>, che calcola il percorso <strong class="text-white">offline</strong> e ha limiti di velocità e avvisi autovelox presi da OpenStreetMap: in montagna senza campo continua a funzionare, dove Waze si ferma. Waze resta per quando c'è rete, perché il traffico in tempo reale lui ce l'ha e OsmAnd no.
+          </p>
+          <p class="text-[11px] text-gray-500 border-l-2 border-white/10 pl-3">
+            Onestà: una traccia registrata contiene la traiettoria che hai tenuto, non la strada — se hai tagliato, il raggio risulta più ampio. E le note non sanno niente di ghiaia, traffico o cantieri. Sono un aiuto alla memoria, mai un'istruzione.
           </p>
         </div>
       </div>
@@ -630,7 +675,7 @@
     <!-- SECTION 5: COMPILAZIONE & CODICE -->
     <section id="download" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
       <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
-        <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">05 / COMPILAZIONE</span>
+        <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">06 / COMPILAZIONE</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">DOWNLOAD & CODICE</h2>
         <div class="space-y-6 text-gray-400 text-sm leading-relaxed">
           <p>

@@ -317,7 +317,7 @@ ScrollTrigger.create({
 });
 
 // Dissolvenza e comparsa a scorrimento delle card informative (Fade-in / Parallax)
-const sections = ["#progetto", "#telemetria", "#valori", "#motore", "#scadenze", "#mockup", "#download"];
+const sections = ["#progetto", "#telemetria", "#valori", "#motore", "#scadenze", "#copilota", "#mockup", "#download"];
 sections.forEach((sec) => {
   let startVal = "top 55%";
   let endVal = "top 30%";
