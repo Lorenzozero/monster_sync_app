@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../core/theme.dart';
@@ -6,14 +7,22 @@ import '../../../widgets/sensor_grid.dart';
 import '../../../widgets/telltale_item.dart';
 import '../../../widgets/value_tooltip.dart';
 import '../view_models/dashboard_view_model.dart';
+import 'digital_dashboard_view.dart';
 
-class DashboardView extends StatelessWidget {
+class DashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
 
   const DashboardView({
     super.key,
     required this.viewModel,
   });
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  bool _showFlash = false;
 
   Color _getRpmColor(double rpm) {
     final ratio = (rpm / 8500.0).clamp(0.0, 1.0);
@@ -29,12 +38,25 @@ class DashboardView extends StatelessWidget {
     }
   }
 
+  void _triggerFlash() {
+    setState(() {
+      _showFlash = true;
+    });
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        setState(() {
+          _showFlash = false;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: viewModel,
+      listenable: widget.viewModel,
       builder: (context, _) {
-        final telemetry = viewModel.data;
+        final telemetry = widget.viewModel.data;
 
         // Avvolgiamo l'intera Dashboard nel ValueTooltipLayer per abilitare i popup informativi
         return ValueTooltipLayer(
@@ -59,11 +81,10 @@ class DashboardView extends StatelessWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Logo grande in alto a sinistra
-                            Image.asset(
-                              'assets/ducati_logo.png',
-                              height: 76,
-                              fit: BoxFit.contain,
+                            // Logo grande animato in alto a sinistra con long press
+                            LogoTriggerWidget(
+                              viewModel: widget.viewModel,
+                              onTrigger: _triggerFlash,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -273,10 +294,138 @@ class DashboardView extends StatelessWidget {
                   ),
                 ),
               ),
+
+              // ── WHITE FLASH OVERLAY ──────────────────────────────────
+              if (_showFlash)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white,
+                  ),
+                ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+// Widget Logo con vibrazione, scala e gestione long press
+class LogoTriggerWidget extends StatefulWidget {
+  final DashboardViewModel viewModel;
+  final VoidCallback onTrigger;
+
+  const LogoTriggerWidget({
+    super.key,
+    required this.viewModel,
+    required this.onTrigger,
+  });
+
+  @override
+  State<LogoTriggerWidget> createState() => _LogoTriggerWidgetState();
+}
+
+class _LogoTriggerWidgetState extends State<LogoTriggerWidget> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _isPressing = false;
+  Timer? _longPressTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 50),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onPressStart() {
+    setState(() {
+      _isPressing = true;
+    });
+    _controller.repeat(reverse: true);
+    
+    // Richiede 1.2 secondi di pressione continua
+    _longPressTimer = Timer(const Duration(milliseconds: 1200), () {
+      _triggerDashboard();
+    });
+  }
+
+  void _onPressEnd() {
+    _controller.stop();
+    _controller.reset();
+    _longPressTimer?.cancel();
+    setState(() {
+      _isPressing = false;
+    });
+  }
+
+  void _triggerDashboard() {
+    _controller.stop();
+    _controller.reset();
+    setState(() {
+      _isPressing = false;
+    });
+
+    widget.onTrigger();
+
+    if (mounted) {
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              DigitalDashboardView(viewModel: widget.viewModel),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPressDown: (_) => _onPressStart(),
+      onLongPressCancel: () => _onPressEnd(),
+      onLongPressUp: () => _onPressEnd(),
+      onLongPressEnd: (_) => _onPressEnd(),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          double dx = 0.0;
+          double dy = 0.0;
+          double scale = 1.0;
+          
+          if (_isPressing) {
+            dx = (const Offset(-2, -2) + Offset.fromDirection(_controller.value * 2 * 3.1415, 3)).dx;
+            dy = (const Offset(-2, -2) + Offset.fromDirection(_controller.value * 2 * 3.1415, 3)).dy;
+            scale = 1.0 + _controller.value * 0.20; // Si ingrandisce
+          }
+
+          return Transform.translate(
+            offset: Offset(dx, dy),
+            child: Transform.scale(
+              scale: scale,
+              child: Image.asset(
+                'assets/ducati_logo.png',
+                height: 76,
+                fit: BoxFit.contain,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -88,7 +88,7 @@
   </header>
 
   <!-- 3D MODEL VIEWER BACKGROUND SECTION (FULL SCREEN) -->
-  <div class="fixed top-0 left-0 w-full h-[40vh] lg:h-screen z-20 lg:z-0 bg-neutral-950 lg:bg-transparent border-b border-white/5 lg:border-none pointer-events-none lg:pointer-events-auto">
+  <div class="fixed top-0 left-0 w-full h-[35vh] lg:h-screen z-20 lg:z-0 bg-gradient-to-b from-neutral-950 via-neutral-950/90 to-transparent lg:bg-none lg:border-none pointer-events-none lg:pointer-events-auto">
     <div class="w-full h-full relative flex items-center justify-center">
       <model-viewer
         id="ducati-viewer"
@@ -144,57 +144,57 @@
       <!-- Lato Destro: Tabella Acquisti con Contrasto Migliorato -->
       <div class="w-full md:w-[60%] flex flex-col justify-center">
         <div class="overflow-x-auto w-full border border-white/5 rounded-lg mb-4">
-          <table class="w-full text-left border-collapse text-[11px] lg:text-xs">
+          <table class="table-auto w-full text-left border-collapse text-[10px] sm:text-xs">
             <thead>
               <tr class="border-b border-white/10 bg-white/5 font-orbitron text-[8px] lg:text-[9px] tracking-wider text-gray-400">
-                <th class="p-3">Componente</th>
-                <th class="p-3">Utilizzo</th>
-                <th class="p-3 text-right">Prezzo</th>
-                <th class="p-3 text-center">Acquista</th>
+                <th class="p-1.5 sm:p-3">Componente</th>
+                <th class="p-1.5 sm:p-3">Utilizzo</th>
+                <th class="p-1.5 sm:p-3 text-right">Prezzo</th>
+                <th class="p-1.5 sm:p-3 text-center">Acquista</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5 text-gray-300">
               <!-- ESP32 -->
               <tr>
-                <td class="p-3 font-semibold text-white">ESP32 NodeMCU</td>
-                <td class="p-3 text-gray-400">Microcontrollore & Bluetooth</td>
-                <td class="p-3 text-right font-mono text-cyan-400">€4.50</td>
-                <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-esp32-nodemcu.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">ESP32 NodeMCU</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Microcontrollore & Bluetooth</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€4.50</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-esp32-nodemcu.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- MPU-6050 -->
               <tr>
-                <td class="p-3 font-semibold text-white">MPU-6050 (GY-521)</td>
-                <td class="p-3 text-gray-400">Accelerometro & Giroscopio</td>
-                <td class="p-3 text-right font-mono text-cyan-400">€1.20</td>
-                <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-mpu6050.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">MPU-6050 (GY-521)</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Accelerometro & Giroscopio</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.20</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-mpu6050.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- Beitian GPS -->
               <tr>
-                <td class="p-3 font-semibold text-white">Beitian BN-180 GPS</td>
-                <td class="p-3 text-gray-400">Giro GPS 10Hz & stima marce live (Rapporto Velocità/RPM)</td>
-                <td class="p-3 text-right font-mono text-cyan-400">€9.50</td>
-                <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-beitian-bn180.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Beitian BN-180 GPS</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">GPS 10Hz & calcolo marce live</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€9.50</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-beitian-bn180.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- PC817 Optoisolatori -->
               <tr>
-                <td class="p-3 font-semibold text-white">PC817 Optocoupler</td>
-                <td class="p-3 text-gray-400">Isolamento Giri (RPM) e Spia Riserva Carburante 12V-3.3V</td>
-                <td class="p-3 text-right font-mono text-cyan-400">€1.80</td>
-                <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-pc817-4-channel.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">PC817 Optocoupler</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Isolamento segnale giri (RPM) e riserva</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.80</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-pc817-4-channel.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- LM2596 Step Down -->
               <tr>
-                <td class="p-3 font-semibold text-white">LM2596 Buck Converter</td>
-                <td class="p-3 text-gray-400">Alimentazione 12V -> 5V</td>
-                <td class="p-3 text-right font-mono text-cyan-400">€1.50</td>
-                <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm2596.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">LM2596 Buck Converter</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Alimentazione 12V -> 5V</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.50</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm2596.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- Scatola, Cavi, Fusibile -->
               <tr>
-                <td class="p-3 font-semibold text-white">Scatola IP65 + Fusibili</td>
-                <td class="p-3 text-gray-400">Impermeabilizzazione e Fusibile 1A</td>
-                <td class="p-3 text-right font-mono text-cyan-400">€3.80</td>
-                <td class="p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-waterproof-project-box-small.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Scatola IP65 + Fusibili</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Impermeabilizzazione e Fusibile 1A</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€3.80</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-waterproof-project-box-small.html" target="_blank" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
             </tbody>
           </table>
@@ -216,8 +216,8 @@
   <main class="relative z-10 lg:z-20 w-full min-h-screen pointer-events-none">
 
     <!-- HERO SECTION -->
-    <section id="hero" class="min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[42vh] lg:pt-24 pb-12">
-      <div class="max-w-lg bg-neutral-950/85 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border border-white/5 lg:border-none p-6 sm:p-8 lg:p-0 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] lg:shadow-none pointer-events-auto">
+    <section id="hero" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[37vh] lg:pt-24 pb-8 lg:pb-12">
+      <div class="max-w-2xl bg-neutral-950/85 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border border-white/5 lg:border-none p-6 sm:p-8 lg:p-0 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] lg:shadow-none pointer-events-auto">
         <div class="border-l-4 border-cyan-400 pl-4 mb-6">
           <p class="font-orbitron text-xs tracking-[0.3em] text-cyan-400">TELEMETRIA APERTA & DESMO-HACKING</p>
         </div>
@@ -227,7 +227,7 @@
         <p class="font-orbitron text-xs md:text-sm tracking-[0.1em] text-red-500 font-bold uppercase mb-6">
           Il cruscotto da astronave per il bicilindrico del 2007 (che non ne sapeva nulla)
         </p>
-        <p class="text-gray-400 text-sm md:text-base max-w-lg mb-8 leading-relaxed">
+        <p class="text-gray-400 text-sm md:text-base max-w-2xl mb-8 leading-relaxed">
           Hai un <strong>Ducati Monster 695</strong> del 2007? Zero centraline moderne, nessun controllo di trazione, gas a cavo d'acciaio che se esageri la fisica ti fa subito un preventivo di danni, e un motore ad aria che cuoce le cosce. Abbiamo installato un cervello ESP32 da 5€ e un accelerometro sotto la sella per misurare la telemetria reale, tracciando pieghe e tempi con grafiche retro-futuristiche da cockpit aeronautico.
         </p>
         <div class="flex flex-wrap gap-4">
@@ -242,8 +242,8 @@
     </section>
 
     <!-- SECTION 1: IL PROGETTO (PRESENTAZIONE & OBIETTIVI) -->
-    <section id="progetto" class="min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="progetto" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">01 / L'OBIETTIVO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">MOTO STORICA, CERVELLO DIGITALE</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -267,8 +267,8 @@
     </section>
 
     <!-- SECTION 2: IMU & PIEGA -->
-    <section id="telemetria" class="min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="telemetria" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">02 / INTERFACCIA GIROSCOPIO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">ANGOLI DI PIEGA MPU-6050</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -293,8 +293,8 @@
     </section>
 
     <!-- SECTION 2.5: VALORI MONITORATI -->
-    <section id="valori" class="min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="valori" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">02.5 / DATA LOGGER</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">PARAMETRI ACQUISITI</h2>
         <p class="text-gray-400 text-sm mb-6 leading-relaxed">
@@ -338,8 +338,8 @@
     </section>
 
     <!-- SECTION 3: MOTORE L-TWIN -->
-    <section id="motore" class="min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="motore" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">03 / RAFFREDDAMENTO MOTO</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">IL MOTORE DESMODUE DA 695cc</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -356,8 +356,8 @@
     </section>
 
     <!-- SECTION 4: SCADENZE & BUROCRAZIA -->
-    <section id="scadenze" class="min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="scadenze" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">04 / SCADENZIARIO FISCALE</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">NOTIFICHE & BUROCRAZIA</h2>
         <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
@@ -372,13 +372,13 @@
     </section>
 
     <!-- SECTION 4.5: HARDWARE DETTAGLIATO (TABELLA CENTRATA A SCORRIMENTO) -->
-    <section id="hardware" class="min-h-screen flex flex-col justify-center px-6 md:px-16 py-20 border-t border-white/5">
+    <section id="hardware" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-center px-6 md:px-16 py-10 lg:py-20 border-t border-white/5">
       <!-- La tabella dei componenti AliExpress è proiettata centralmente in questa sezione -->
     </section>
 
     <!-- SECTION 4.8: MOCKUP & PREVIEW APP -->
-    <section id="mockup" class="min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="mockup" class="min-h-[75vh] lg:min-h-screen flex flex-col justify-start lg:justify-center items-end px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-red-500 font-bold uppercase">04.8 / PREVIEW UTENTE</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6">MOCKUP & FUNZIONALITÀ APP</h2>
         <p class="text-gray-400 text-sm mb-6 leading-relaxed">
@@ -452,20 +452,37 @@
     </section>
 
     <!-- SECTION 5: COMPILAZIONE & CODICE -->
-    <section id="download" class="min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[42vh] lg:pt-0 pb-12 lg:py-20 border-t border-white/5">
-      <div class="max-w-lg bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
+    <section id="download" class="min-h-[65vh] lg:min-h-screen flex flex-col justify-start lg:justify-center px-6 md:px-16 pt-[37vh] lg:pt-0 pb-8 lg:pb-12 lg:py-20 border-t border-white/5">
+      <div class="max-w-2xl bg-neutral-950/80 backdrop-blur-md border border-white/5 p-8 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] pointer-events-auto">
         <span class="font-orbitron text-[9px] tracking-[0.4em] text-cyan-400 font-bold uppercase">05 / COMPILAZIONE</span>
         <h2 class="font-teko text-5xl md:text-6xl font-bold uppercase mt-2 mb-6 text-cyan-400">DOWNLOAD & CODICE</h2>
         <div class="space-y-6 text-gray-400 text-sm leading-relaxed">
           <p>
             Il codice dell'applicazione Flutter e il firmware C++ dell'ESP32 sono open-source ed espandibili sotto licenza MIT.
           </p>
-          <div class="bg-cyan-950/20 border border-cyan-500/20 p-6 rounded-xl">
-            <h3 class="font-orbitron text-xs tracking-wider text-cyan-400 font-bold mb-2">SCARICA L'APK PRONTO ALL'USO</h3>
-            <p class="text-[11px] text-gray-400 mb-4">Compilato in modalità release per Android, pronto da installare.</p>
-            <a href="monster_sync_app.apk" download class="inline-block px-6 py-3 bg-cyan-400 text-black hover:bg-white font-orbitron text-[10px] tracking-widest font-black transition-all rounded shadow-[0_0_15px_rgba(0,229,255,0.2)]">
-              DOWNLOAD APK (.apk)
-            </a>
+          <div class="bg-cyan-950/20 border border-cyan-500/20 p-5 sm:p-6 rounded-xl space-y-6">
+            <div>
+              <h3 class="font-orbitron text-xs tracking-wider text-cyan-400 font-bold mb-2">SCARICA L'APPLICAZIONE PRONTA ALL'USO</h3>
+              <p class="text-[11px] text-gray-400 mb-4">Pacchetti pre-compilati per Android e iOS, pronti per l'installazione diretta.</p>
+              
+              <div class="flex flex-col sm:flex-row gap-3">
+                <a href="monster_sync_app.apk" download class="flex-1 text-center px-4 py-3 bg-cyan-400 text-black hover:bg-white font-orbitron text-[10px] tracking-widest font-black transition-all rounded shadow-[0_0_15px_rgba(0,229,255,0.2)]">
+                  DOWNLOAD APK (ANDROID)
+                </a>
+                <a href="monster_sync_app.ipa" download class="flex-grow text-center px-4 py-3 border border-cyan-400/40 text-cyan-400 hover:bg-cyan-400 hover:text-black font-orbitron text-[10px] tracking-widest font-black transition-all rounded">
+                  DOWNLOAD IPA (IPHONE)
+                </a>
+              </div>
+            </div>
+
+            <div class="border-t border-cyan-500/10 pt-4">
+              <h4 class="font-orbitron text-[10px] text-white font-bold tracking-wider uppercase mb-1.5 flex items-center gap-1.5">
+                ℹ️ INSTALLAZIONE SU IPHONE (SIDELOAD)
+              </h4>
+              <p class="text-[11px] text-gray-400 leading-normal">
+                Su iOS, per installare il pacchetto <strong class="text-cyan-400">.ipa</strong> senza App Store, è necessario eseguire il <strong>Sideload</strong>. Puoi utilizzare strumenti gratuiti come <strong>AltStore</strong>, <strong>Sideloadly</strong> o <strong>TrollStore</strong> caricando il file dal tuo computer o direttamente dal telefono per abilitare la telemetria live.
+              </p>
+            </div>
           </div>
 
           <div class="border border-white/10 p-5 rounded-xl space-y-4">
@@ -483,8 +500,9 @@
           </div>
           
           <div class="flex gap-4 mt-2">
-            <a href="https://github.com/Lorenzozero/monster_sync_app" target="_blank" class="flex-grow text-center py-4 border border-white/10 hover:bg-white/5 rounded font-orbitron text-[10px] tracking-wider font-bold transition-all">
-              APRI IL REPOSITORY GITHUB
+            <a href="https://github.com/Lorenzozero/monster_sync_app" target="_blank" class="flex-grow flex items-center justify-center gap-2 py-4 border border-white/10 hover:border-cyan-400 hover:bg-cyan-950/20 rounded font-orbitron text-[10px] tracking-wider font-bold transition-all text-white hover:text-cyan-400">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              <span>CODICE SORGENTE (REPO PUBBLICA GITHUB)</span>
             </a>
           </div>
         </div>

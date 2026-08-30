@@ -88,8 +88,8 @@ viewer.addEventListener('load', () => {
   updateCamera();
   // Animazione iniziale d'ingresso
   gsap.fromTo(viewerParams, 
-    { orbitTheta: 360, orbitRadius: 110, x: 30, roll: 0, pitch: 0, yaw: 0 },
-    { orbitTheta: 165, orbitRadius: 85, x: 18, roll: 0, pitch: 0, yaw: 0, duration: 2.5, ease: "power3.out", onUpdate: updateCamera }
+    { orbitTheta: 360, orbitRadius: 125, x: 30, roll: 0, pitch: 0, yaw: 0 },
+    { orbitTheta: 165, orbitRadius: 98, x: 18, roll: 0, pitch: 0, yaw: 0, duration: 2.5, ease: "power3.out", onUpdate: updateCamera }
   );
 });
 
@@ -120,7 +120,7 @@ const tl = gsap.timeline({
 tl.to(viewerParams, {
   orbitTheta: 270, // Vista laterale sinistra
   orbitPhi: 75,
-  orbitRadius: 80,
+  orbitRadius: 95,
   x: 18,
   roll: 0,
   pitch: 0,
@@ -134,7 +134,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: 180, // Inquadratura frontale per evidenziare la piega
   orbitPhi: 60,
-  orbitRadius: 62,
+  orbitRadius: 75,
   x: -18,
   roll: -28,       // PIEGA DI 28 GRADI A SINISTRA!
   pitch: -5,
@@ -148,7 +148,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: 220,
   orbitPhi: 70,
-  orbitRadius: 75,
+  orbitRadius: 90,
   x: 18,
   roll: 0,
   pitch: 0,
@@ -162,7 +162,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: 90, // Vista laterale destra per vedere l'impennata del motore
   orbitPhi: 80,
-  orbitRadius: 65,
+  orbitRadius: 80,
   x: -18,
   roll: 0,
   pitch: 18,      // SOLLEVA LA RUOTA ANTERIORE DI 18 GRADI!
@@ -176,7 +176,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: 0, // Inquadratura posteriore
   orbitPhi: 75,
-  orbitRadius: 68,
+  orbitRadius: 82,
   x: 18,
   roll: 0,
   pitch: 0,
@@ -190,7 +190,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 45,
-  orbitRadius: 75,
+  orbitRadius: 90,
   x: 8,
   roll: 0,
   pitch: 0,
@@ -223,7 +223,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 55,
-  orbitRadius: 75,
+  orbitRadius: 90,
   x: -18,
   roll: 0,
   pitch: 0,
@@ -255,7 +255,7 @@ tl.to(viewerParams, {
 .to(viewerParams, {
   orbitTheta: -195,
   orbitPhi: 75,
-  orbitRadius: 80,
+  orbitRadius: 95,
   x: 18,
   roll: 0,
   pitch: 0,
@@ -267,18 +267,44 @@ tl.to(viewerParams, {
 });
 
 // Dissolvenza e comparsa a scorrimento delle card informative (Fade-in / Parallax)
-const sections = ["#progetto", "#telemetria", "#valori", "#motore", "#scadenze", "#hardware", "#mockup", "#download"];
+const sections = ["#progetto", "#telemetria", "#valori", "#motore", "#scadenze", "#mockup", "#download"];
 sections.forEach((sec) => {
-  gsap.from(sec + " .max-w-lg", {
+  let startVal = "top 55%";
+  let endVal = "top 30%";
+
+  // Per il mockup ritardiamo significativamente la comparsa per evitare overlap con la tabella hardware
+  if (sec === "#mockup") {
+    startVal = "top 25%";
+    endVal = "top 5%";
+  }
+
+  // Entrata (fade-in)
+  gsap.fromTo(sec + " .max-w-2xl", 
+    { opacity: 0.05, y: 40 },
+    {
+      scrollTrigger: {
+        trigger: sec,
+        start: startVal,
+        end: endVal,
+        scrub: true
+      },
+      opacity: 1,
+      y: 0,
+      overwrite: "auto"
+    }
+  );
+
+  // Uscita (fade-out)
+  gsap.to(sec + " .max-w-2xl", {
     scrollTrigger: {
       trigger: sec,
-      start: "top 80%",
-      end: "top 40%",
+      start: "bottom 60%", // Inizia a svanire quando il fondo sale oltre il 60% del viewport
+      end: "bottom 20%",   // Diventa invisibile prima di uscire del tutto
       scrub: true
     },
     opacity: 0.05,
-    y: 50,
-    duration: 1
+    y: -40,
+    overwrite: "auto"
   });
 });
 
