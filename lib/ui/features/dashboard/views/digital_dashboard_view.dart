@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -9,6 +10,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:monster_sync_app/data/services/weather_service.dart';
@@ -47,6 +49,17 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   // Controller per l'animazione di rotazione 3D dell'icona microfono
   late final AnimationController _rotationController;
 
+  // Stato e variabili per la navigazione interna simulata (stile Waze)
+  bool _internalNavActive = false;
+  int _internalRouteIndex = 0;
+  Timer? _internalNavTimer;
+  String _internalNextTurn = "Via del Muraglione";
+  String _internalDistanceToTurn = "300 m";
+  String _internalEta = "12:00";
+  String _internalRemainingDist = "0.0 km";
+  String _selectedDestinationName = "";
+  double _mapRotation = 15.0;
+
   void _triggerShowCloseButton() {
     if (!mounted) return;
     setState(() {
@@ -62,8 +75,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     });
   }
 
-  // Coordinate di riferimento (Passo del Muraglione, Mugello/Toscana)
-  final LatLng _myLocation = const LatLng(43.9961, 11.6429);
+  // Coordinate di riferimento (Passo del Muraglione, Mugello/Toscana) - NON final per aggiornamento in corsa
+  LatLng _myLocation = const LatLng(43.9961, 11.6429);
   
   // Coordinate autovelox noti
   final List<LatLng> _autoveloxLocations = [
