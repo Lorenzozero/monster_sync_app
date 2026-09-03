@@ -1,0 +1,92 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MonsterSync — build iOS senza Mac e senza account Apple Developer a pagamento
+#
+# Produce un IPA NON FIRMATO, che poi si installa su iPhone con Sideloadly
+# (firma con un Apple ID gratuito, certificato da rinnovare ogni 7 giorni).
+#
+# ⚠️ DOPO AVER COLLEGATO IL REPO SU CODEMAGIC:
+#    Application settings → passare da "Workflow Editor" a "codemagic.yaml".
+#    Se resta in Workflow Editor, Codemagic IGNORA IN SILENZIO questo file e
+#    lancia un suo "Default Workflow" che compila in debug e non produce
+#    nessun IPA. È già successo, ed è tornato indietro da solo mesi dopo:
+#    se una build si comporta in modo strano, la prima cosa da controllare è
+#    l'intestazione del log, che dichiara quale workflow sta girando.
+# ─────────────────────────────────────────────────────────────────────────────
+
+workflows:
+  ios-unsigned:
+    name: iOS unsigned IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      # 1. Swift Package Manager va disattivato PRIMA di qualsiasi build.
+      #    Quando è attivo può linkare due volte le stesse dipendenze e la
+      #    build muore con centinaia di "duplicate symbols" al link.
+      #    Deve stare qui: dopo pub get non serve più a niente.
+      - name: Disattiva Swift Package Manager
+        script: flutter config --no-enable-swift-package-manager
+
+      - name: Dipendenze Flutter
+        script: flutter pub get
+
+      # 2. Il progetto non ha mai avuto un Podfile: lo genera Flutter alla
+      #    prima configurazione iOS.
+      - name: Genera la configurazione iOS se manca
+        script: |
+          if [ ! -f ios/Podfile ]; then
+            echo "Podfile assente: lo genera flutter precache/pub get"
+            flutter build ios --config-only --release --no-codesign
+          fi
+
+      # 3. pod install come PASSO A SÉ, non dentro flutter build.
+      #    Se fallisce dentro il wrapper di Flutter l'errore vero viene
+      #    inghiottito e leggi solo "Error running pod install", che non dice
+      #    niente. Qui invece lo stderr di CocoaPods finisce nel log di questo
+      #    passo e si vede cosa è andato storto davvero.
+      - name: CocoaPods (passo separato per vedere gli errori veri)
+        script: |
+          cd ios
+          pod install --verbose
+
+      - name: Build iOS senza firma
+        script: flutter build ios --release --no-codesign
+
+      # 4. Xcode si rifiuta di esportare un .ipa senza certificato di firma.
+      #    Ma un .ipa è solo uno zip con dentro una cartella Payload/ che
+      #    contiene il .app: lo si confeziona a mano. Sideloadly rifirma tutto
+      #    da capo all'installazione, quindi il binario di partenza non ha
+      #    bisogno di essere firmato.
+      - name: Confeziona l'IPA a mano
+        script: |
+          set -e
+          APP_PATH="build/ios/iphoneos/Runner.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Runner.app non trovato in $APP_PATH"
+            ls -la build/ios/iphoneos/ || true
+            exit 1
+          fi
+          mkdir -p build/ios/ipa/Payload
+          cp -r "$APP_PATH" build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -qr monster_sync_app-unsigned.ipa Payload
+          echo "IPA creato:"
+          ls -lh monster_sync_app-unsigned.ipa
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - flutter_drive.log
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - lorenzo.garoffolo03@gmail.com
+        notify:
+          success: true
+          failure: true
