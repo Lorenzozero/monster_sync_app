@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -10,11 +8,11 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:monster_sync_app/data/services/weather_service.dart';
 import 'package:monster_sync_app/data/services/navigation_service.dart';
+import 'package:monster_sync_app/data/services/geocoding_service.dart';
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -59,6 +57,257 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   String _internalRemainingDist = "0.0 km";
   String _selectedDestinationName = "";
   double _mapRotation = 15.0;
+
+  // Percorso calcolato e passo corrente lungo di esso
+  RouteResult? _route;
+  int _stepIndex = 0;
+  bool _routeLoading = false;
+
+  // ── RICERCA DESTINAZIONE ──────────────────────────────────────────────────
+  Future<void> _openDestinationSearch() async {
+    final ctl = TextEditingController();
+    List<Place> results = const [];
+    bool searching = false;
+
+    final picked = await showModalBottomSheet<Place>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0B0D10),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          Future<void> doSearch() async {
+            setSheet(() => searching = true);
+            final r = await GeocodingService.instance
+                .search(ctl.text, near: _myLocation);
+            setSheet(() {
+              results = r;
+              searching = false;
+            });
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: ctl,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: (_) => doSearch(),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Dove vuoi andare?',
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          prefixIcon:
+                              const Icon(Icons.search, color: AppTheme.activeCyan),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      onPressed: searching ? null : doSearch,
+                      icon: searching
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppTheme.activeCyan))
+                          : const Icon(Icons.arrow_forward,
+                              color: AppTheme.activeCyan),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (results.isEmpty && !searching)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Text(
+                      'Cerca un paese, una via, un passo. I risultati arrivano da '
+                      'OpenStreetMap e servono la rete: il percorso poi resta '
+                      'disegnato sulla mappa dell\'app.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                          fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+                    ),
+                  ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 260),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: results.length,
+                    itemBuilder: (_, i) {
+                      final p = results[i];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.place_outlined,
+                            color: AppTheme.activeCyan, size: 20),
+                        title: Text(p.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13)),
+                        subtitle: Text(p.detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white38, fontSize: 10)),
+                        onTap: () => Navigator.pop(ctx, p),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    ctl.dispose();
+    if (picked != null) await _startInternalNavigation(picked);
+  }
+
+  // ── NAVIGAZIONE SULLA MAPPA DELL'APP ──────────────────────────────────────
+  Future<void> _startInternalNavigation(Place dest) async {
+    setState(() {
+      _routeLoading = true;
+      _selectedDestinationName = dest.name;
+    });
+
+    final r = await GeocodingService.instance.route(_myLocation, dest.coord);
+    if (!mounted) return;
+
+    setState(() {
+      _route = r;
+      _routePoints = r.points;
+      _stepIndex = 0;
+      _internalRouteIndex = 0;
+      _internalNavActive = true;
+      _navigationActive = true;
+      _routeLoading = false;
+      _internalEta = r.etaLabel;
+      _internalRemainingDist = r.distanceLabel;
+      _internalNextTurn = r.steps.isNotEmpty ? r.steps.first.streetName : '';
+      _internalDistanceToTurn =
+          r.steps.isNotEmpty ? _fmtDistance(r.steps.first.distanceM) : '';
+    });
+
+    _mapController.move(_myLocation, 16.0);
+
+    await _tts.speak(r.straightLineFallback
+        ? 'Percorso non disponibile senza rete. Traccio la direzione verso ${dest.name}.'
+        : 'Navigazione avviata verso ${dest.name}. ${r.distanceLabel}, arrivo previsto alle ${r.etaLabel}.');
+
+    _startRouteProgress();
+  }
+
+  /// Fa avanzare la posizione lungo la rotta.
+  /// È una simulazione: quando il GPS della centralina sarà collegato,
+  /// _myLocation arriverà da lì e questo timer sparisce.
+  void _startRouteProgress() {
+    _internalNavTimer?.cancel();
+    _internalNavTimer =
+        Timer.periodic(const Duration(milliseconds: 700), (t) {
+      final route = _route;
+      if (!mounted || route == null || route.points.length < 2) {
+        t.cancel();
+        return;
+      }
+      if (_internalRouteIndex >= route.points.length - 1) {
+        t.cancel();
+        setState(() {
+          _internalNextTurn = 'Arrivato';
+          _internalDistanceToTurn = '';
+        });
+        _tts.speak('Sei arrivato a destinazione.');
+        return;
+      }
+
+      setState(() {
+        _internalRouteIndex++;
+        _myLocation = route.points[_internalRouteIndex];
+
+        // distanza residua lungo i punti che restano
+        const d = Distance();
+        double rest = 0;
+        for (var i = _internalRouteIndex; i < route.points.length - 1; i++) {
+          rest += d(route.points[i], route.points[i + 1]);
+        }
+        _internalRemainingDist = _fmtDistance(rest);
+
+        // passo corrente: il primo la cui manovra è ancora davanti
+        if (route.steps.isNotEmpty) {
+          while (_stepIndex < route.steps.length - 1 &&
+              d(_myLocation, route.steps[_stepIndex].at) < 25) {
+            _stepIndex++;
+          }
+          final s = route.steps[_stepIndex];
+          _internalNextTurn = s.streetName;
+          _internalDistanceToTurn =
+              _fmtDistance(d(_myLocation, s.at).toDouble());
+        }
+      });
+
+      _mapController.move(_myLocation, _mapController.camera.zoom);
+    });
+  }
+
+  void _stopInternalNavigation() {
+    _internalNavTimer?.cancel();
+    setState(() {
+      _internalNavActive = false;
+      _navigationActive = false;
+      _route = null;
+      _routePoints = [];
+      _selectedDestinationName = '';
+    });
+  }
+
+  static String _fmtDistance(double m) =>
+      m >= 1000 ? '${(m / 1000).toStringAsFixed(1)} km' : '${m.round()} m';
+
+  IconData _maneuverIcon(RouteStep s) {
+    if (s.maneuver == 'arrive') return Icons.flag;
+    if (s.maneuver == 'roundabout' || s.maneuver == 'rotary') {
+      return Icons.roundabout_right;
+    }
+    switch (s.modifier) {
+      case 'left':
+        return Icons.turn_left;
+      case 'right':
+        return Icons.turn_right;
+      case 'slight left':
+        return Icons.turn_slight_left;
+      case 'slight right':
+        return Icons.turn_slight_right;
+      case 'sharp left':
+        return Icons.turn_sharp_left;
+      case 'sharp right':
+        return Icons.turn_sharp_right;
+      case 'uturn':
+        return Icons.u_turn_left;
+      default:
+        return Icons.straight;
+    }
+  }
 
   void _triggerShowCloseButton() {
     if (!mounted) return;
@@ -298,7 +547,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             options: MapOptions(
               initialCenter: _myLocation,
               initialZoom: 17.0,   // Zoom alto stile Waze (vista ravvicinata sulla strada)
-              initialRotation: 15.0, // Rotazione per simulare la direzione di marcia (heading)
+              initialRotation: _mapRotation, // heading simulato; diventera' quello vero dal GPS
               minZoom: 14.0,
               maxZoom: 18.0,
               // Colore sotto le tile: copre i bordi che la rotazione di 15°
@@ -681,11 +930,16 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           ),
 
           // ── BOTTOM WIDGET (Pannello Assistente Vocale / Stato Comandi) ──
+          // Centrato nello spazio disponibile: la barra delle marce occupa 48 px
+          // a destra, quindi il centro ottico non coincide col centro schermo.
           Positioned(
             bottom: 12,
-            right: 60, // Lascia spazio per la barra delle marce a destra (48px + margine)
-            left: 194,
-            child: Container(
+            left: 12,
+            right: 60,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.85),
@@ -737,6 +991,29 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ),
                   const SizedBox(width: 10),
  
+                  // Cerca una destinazione e naviga sulla mappa dell'app
+                  GestureDetector(
+                    onTap: _openDestinationSearch,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppTheme.activeCyan.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.activeCyan, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.activeCyan.withOpacity(0.2),
+                            blurRadius: 8,
+                          )
+                        ],
+                      ),
+                      child: const Icon(Icons.search,
+                          color: AppTheme.activeCyan, size: 22),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
                   // Navigazione rapida: OsmAnd se c'è, altrimenti Waze
                   GestureDetector(
                     onTap: () async {
@@ -848,8 +1125,139 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     ),
                 ],
               ),
+                ),
+              ),
             ),
           ),
+
+          // ── RIQUADRO INDICAZIONI (in alto al centro, stile navigatore) ──
+          // Compare solo con la navigazione attiva: a moto ferma o senza rotta
+          // il centro dello schermo resta libero, che è dove guardi la strada.
+          if (_internalNavActive || _routeLoading)
+            Positioned(
+              top: 12,
+              left: 190,   // oltre il riquadro carburante
+              right: 210,  // prima del meteo e della barra marce
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B6B3A).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.15), width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: _routeLoading
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              ),
+                              const SizedBox(width: 12),
+                              Text('Calcolo del percorso…',
+                                  style: GoogleFonts.orbitron(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Icon(
+                                _route != null && _route!.steps.isNotEmpty
+                                    ? _maneuverIcon(_route!.steps[_stepIndex])
+                                    : Icons.straight,
+                                color: Colors.white,
+                                size: 34,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _internalDistanceToTurn.isEmpty
+                                          ? (_route != null &&
+                                                  _route!.steps.isNotEmpty
+                                              ? _route!
+                                                  .steps[_stepIndex].instruction
+                                              : '')
+                                          : _internalDistanceToTurn,
+                                      style: GoogleFonts.orbitron(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      _internalNextTurn.isEmpty
+                                          ? _selectedDestinationName
+                                          : _internalNextTurn,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // ETA e distanza residua
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(_internalEta,
+                                      style: GoogleFonts.orbitron(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white)),
+                                  Text(_internalRemainingDist,
+                                      style: GoogleFonts.orbitron(
+                                          fontSize: 9,
+                                          color:
+                                              Colors.white.withOpacity(0.75))),
+                                ],
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _stopInternalNavigation,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close,
+                                      size: 15, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ),
 
           // ── BARRA DELLE MARCE LATERALE DX (Full Height) ──
           Positioned(
