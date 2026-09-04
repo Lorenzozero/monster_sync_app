@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -14,6 +15,8 @@ import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_vie
 import 'package:monster_sync_app/data/services/weather_service.dart';
 import 'package:monster_sync_app/data/services/navigation_service.dart';
 import 'package:monster_sync_app/data/services/geocoding_service.dart';
+import 'package:monster_sync_app/data/services/speed_camera_service.dart';
+import 'package:monster_sync_app/data/services/gear_advisor.dart';
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -49,6 +52,11 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   // Controller per l'animazione di rotazione 3D dell'icona microfono
   late final AnimationController _rotationController;
 
+  /// Battito della marcia consigliata. Non lampeggia: sale e scende piano,
+  /// perche' deve farsi notare con la coda dell'occhio senza rubarti la
+  /// strada.
+  late final AnimationController _shiftPulse;
+
   // Stato e variabili per la navigazione interna simulata (stile Waze)
   bool _internalNavActive = false;
   int _internalRouteIndex = 0;
@@ -78,14 +86,49 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   //  - con quella inclinazione il fondo si comprime, quindi il widget della
   //    mappa deve essere largo il doppio e alto 3,6 volte lo schermo, o in
   //    alto restano strisce vuote.
-  static const double _pitch = 0.942;               // 54 gradi in radianti
+  static const double _pitch = 1.082;               // 62 gradi in radianti
   static const double _perspectiveDepth = 1 / 625.0;
-  static const double _cameraShift = 0.18;          // la moto sotto al centro
-  static const double _planeWidthFactor = 2.0;
-  static const double _planeHeightFactor = 3.6;
+  /// Quanto la scena scende rispetto al centro dello schermo — cioe' dove
+  /// finisce la moto.
+  ///
+  /// A 0,30 la moto cadeva a 0,80 dell'altezza, sotto il pannello
+  /// dell'assistente: mezza nascosta. Deve stare **sopra** la barra in basso,
+  /// come il segnalino in tutti i navigatori. La sensazione di vicinanza non
+  /// la da' questo numero ma l'inclinazione, che infatti e' salita a 62 gradi.
+  static const double _cameraShift = 0.16;
+  static const double _planeWidthFactor = 1.8;
+  static const double _planeHeightFactor = 2.6;
+
+  /// Dove finisce, sullo schermo, il bordo alto della mappa — misurato in
+  /// pixel dal bordo alto del riquadro.
+  ///
+  /// A 62 gradi la compressione prospettica e' cosi' forte che per riempire
+  /// anche l'ultima striscia in alto servirebbe un piano alto quindici volte
+  /// lo schermo: centocinquanta tile da scaricare per un dito di immagine.
+  /// Si ferma prima, e sopra il bordo va una **foschia**, che e' anche quello
+  /// che vedresti davvero guardando lontano. Il calcolo e' lo stesso della
+  /// matrice, quindi la fascia si adatta da sola a qualunque schermo.
+  double _mapTopEdge(Size size) {
+    final yTop = -size.height * _planeHeightFactor / 2;
+    final w = 1 - _perspectiveDepth * math.sin(_pitch) * yTop;
+    final projected =
+        (math.cos(_pitch) * yTop + size.height * _cameraShift) / w;
+    return (projected + size.height / 2).clamp(0.0, size.height);
+  }
 
   bool _perspectiveOn = true;
   int _styleIndex = 0;
+
+  // ── AUTOVELOX ─────────────────────────────────────────────────────────────
+  // Le posizioni stanno in cache sul telefono (vedi SpeedCameraService):
+  // l'avviso funziona in galleria e senza campo, che e' quando serve.
+  CameraWarning? _cameraWarning;
+  final Set<String> _announcedCameras = {};
+
+  /// Rotta attuale in gradi. Serve a non avvisare per l'autovelox che guarda
+  /// la carreggiata opposta. Finche' la centralina non c'e', e' quella
+  /// calcolata lungo il percorso.
+  double _heading = 15.0;
   MapStyle get _style => MapStyle.all[_styleIndex];
 
   void _cycleStyle() {
@@ -276,9 +319,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         return;
       }
 
+      final prev = _myLocation;
+
       setState(() {
         _internalRouteIndex++;
         _myLocation = route.points[_internalRouteIndex];
+
+        // Rotta vera lungo il percorso: serve agli autovelox e, quando
+        // arrivera' il GPS della centralina, alla rotazione della mappa.
+        _heading = GeocodingService.bearing(prev, _myLocation);
 
         // distanza residua lungo i punti che restano
         const d = Distance();
@@ -302,6 +351,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       });
 
       _mapController.move(_myLocation, _mapController.camera.zoom);
+      _checkSpeedCameras();
     });
   }
 
@@ -361,12 +411,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
 
   // Coordinate di riferimento (Passo del Muraglione, Mugello/Toscana) - NON final per aggiornamento in corsa
   LatLng _myLocation = const LatLng(43.9961, 11.6429);
-  
-  // Coordinate autovelox noti
-  final List<LatLng> _autoveloxLocations = [
-    const LatLng(43.9980, 11.6450),
-    const LatLng(43.9940, 11.6370),
-  ];
 
   // Coordinata distributore IP più vicino
   final LatLng _gasStationLocation = const LatLng(44.0010, 11.6520);
@@ -380,6 +424,44 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   // Meteo reale (Open-Meteo). Null finche' la prima lettura non arriva.
   WeatherInfo? _weather;
 
+  Future<void> _loadSpeedCameras() async {
+    await SpeedCameraService.instance.ensureLoaded(_myLocation);
+    if (mounted) setState(() {});
+  }
+
+  /// Controlla se c'e' un autovelox davanti e, la prima volta, lo annuncia.
+  ///
+  /// L'annuncio parte una volta sola per autovelox: ripeterlo ogni mezzo
+  /// secondo mentre ti avvicini sarebbe insopportabile. L'elenco di quelli
+  /// gia' annunciati si svuota appena nessuno e' piu' in vista, cosi' al
+  /// ritorno lo stesso autovelox avvisa di nuovo.
+  void _checkSpeedCameras() {
+    final w = SpeedCameraService.instance
+        .warningFor(_myLocation, heading: _heading);
+
+    if (w == null) {
+      if (_cameraWarning != null || _announcedCameras.isNotEmpty) {
+        setState(() {
+          _cameraWarning = null;
+          _announcedCameras.clear();
+        });
+      }
+      return;
+    }
+
+    setState(() => _cameraWarning = w);
+
+    final key = '${w.camera.at.latitude},${w.camera.at.longitude}';
+    if (_announcedCameras.add(key)) {
+      HapticFeedback.heavyImpact();
+      final metri = (w.distanceM / 50).round() * 50;
+      final limite = w.camera.maxSpeed;
+      _tts.speak(limite == null
+          ? 'Attenzione, autovelox tra $metri metri.'
+          : 'Attenzione, autovelox tra $metri metri. Limite $limite.');
+    }
+  }
+
   Future<void> _loadWeather() async {
     final w = await WeatherService.instance
         .forPosition(_myLocation.latitude, _myLocation.longitude);
@@ -390,7 +472,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   void initState() {
     super.initState();
     _mapController = MapController();
-    
+
     // Forza la modalità Landscape e nascondi le barre di sistema
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -417,20 +499,30 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       duration: const Duration(seconds: 3),
     )..repeat();
 
+    _shiftPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+
     // Simula telemetria attiva in marcia (solo cambio marcia)
     _telemetryTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
-      if (mounted) {
-        setState(() {
-          if (timer.tick % 15 == 0) {
-            _currentGear = (_currentGear == 3) ? 4 : 3;
-          }
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        if (timer.tick % 15 == 0) {
+          _currentGear = (_currentGear == 3) ? 4 : 3;
+        }
+      });
+      // L'avviso autovelox non dipende dall'avere una rotta impostata: deve
+      // funzionare anche quando stai solo girando senza meta.
+      _checkSpeedCameras();
     });
 
     // Meteo vero: serve anche a sapere se l'asfalto e' bagnato, non solo
     // a scrivere i gradi.
     _loadWeather();
+
+    // Autovelox della zona: si scaricano una volta e restano sul telefono.
+    _loadSpeedCameras();
 
     // Ruggito e vibrazione all'apertura del cruscotto: insieme, una volta.
     _playStartRoar();
@@ -464,6 +556,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(AssetSource('engine_roar.ogg'), volume: 1.0);
       _roarStopTimer?.cancel();
+    _listenWatchdog?.cancel();
+    _speech.cancel();
       _roarStopTimer = Timer(const Duration(milliseconds: 3500), () {
         _audioPlayer.stop();
       });
@@ -501,72 +595,136 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     _closeButtonTimer?.cancel();
     _roarStopTimer?.cancel();
     _rotationController.dispose();
+    _shiftPulse.dispose();
     _waveController.dispose();
     _audioPlayer.dispose();
     _tts.stop();
     super.dispose();
   }
 
-  // Avvia l'ascolto dell'assistente vocale
-  Future<void> _startVoiceListening() async {
-    bool available = await _speech.initialize(
-      onStatus: (status) => debugPrint('Speech status: $status'),
-      onError: (error) => debugPrint('Speech error: $error'),
-    );
+  // ── ASSISTENTE VOCALE ─────────────────────────────────────────────────────
+  //
+  // Prima l'ascolto non finiva quasi mai, e per tre motivi diversi:
+  //  - `listen()` partiva senza `listenFor` ne' `pauseFor`, quindi il motore
+  //    restava aperto a tempo indeterminato;
+  //  - `onStatus` scriveva soltanto nel log: quando il riconoscimento si
+  //    chiudeva da solo, l'interfaccia restava convinta di stare ancora ad
+  //    ascoltare, con i bordi rossi accesi;
+  //  - `initialize()` veniva richiamata a ogni tocco, aprendo una sessione
+  //    sopra l'altra.
+  // In piu' un `Future.delayed` di 4 secondi lanciava da solo il comando
+  // "cerca distributore" se non avevi ancora detto niente: cercava benzina
+  // mentre stavi ancora prendendo fiato.
+  //
+  // Adesso l'ascolto ha quattro uscite, e almeno una scatta sempre:
+  //  1. hai finito di parlare  -> `pauseFor`, 3 s di silenzio;
+  //  2. non parli affatto      -> `listenFor`, 12 s;
+  //  3. il motore muore zitto  -> il cane da guardia, 15 s (succede davvero,
+  //     soprattutto con l'audio dirottato sull'interfono bluetooth);
+  //  4. ritocchi il microfono  -> interrompe.
+  bool _speechReady = false;
+  Timer? _listenWatchdog;
 
-    if (available) {
-      setState(() {
-        _isListening = true;
-        _assistantText = "Ascolto attivo dalle cuffie...";
-        _userSpeechResult = "";
-      });
-      _waveController.repeat();
-
-      _speech.listen(
-        onResult: (result) {
-          setState(() {
-            _userSpeechResult = result.recognizedWords;
-          });
-          if (result.finalResult) {
-            _processVoiceCommand(_userSpeechResult);
-          }
-        },
-        localeId: "it-IT",
-      );
-
-      // Timeout di sicurezza dopo 5 secondi di inattività (simula anche se non parla l'utente)
-      Future.delayed(const Duration(seconds: 4), () {
-        if (_isListening && _userSpeechResult.isEmpty) {
-          _processVoiceCommand("cerca distributore più vicino");
+  Future<void> _ensureSpeechReady() async {
+    if (_speechReady) return;
+    _speechReady = await _speech.initialize(
+      onStatus: (status) {
+        // Il motore dichiara di aver smesso: l'interfaccia deve seguirlo,
+        // altrimenti resta accesa per sempre.
+        if (status == stt.SpeechToText.doneStatus ||
+            status == stt.SpeechToText.notListeningStatus) {
+          if (_isListening) _stopListening();
         }
-      });
-    } else {
-      // Se SpeechToText non è disponibile (es. emulatore), simuliamo il riconoscimento vocale
-      setState(() {
-        _isListening = true;
-        _assistantText = "Simulazione input vocale...";
-      });
-      _waveController.repeat();
-      
-      Future.delayed(const Duration(seconds: 2), () {
-        _processVoiceCommand("cerca distributore");
-      });
-    }
+      },
+      onError: (error) {
+        debugPrint('Speech error: ${error.errorMsg}');
+        _stopListening(message: 'Non sono riuscito ad ascoltare. Riprova.');
+      },
+    );
   }
 
+  Future<void> _toggleVoiceListening() async {
+    if (_isListening) {
+      await _stopListening(message: 'Ascolto interrotto.');
+      return;
+    }
+
+    await _ensureSpeechReady();
+    if (!mounted) return;
+
+    if (!_speechReady) {
+      // Niente microfono (permesso negato, o emulatore). Si dice com'e'
+      // invece di fingere un comando riconosciuto, come faceva prima.
+      setState(() => _assistantText =
+          'Microfono non disponibile: controlla i permessi.');
+      return;
+    }
+
+    setState(() {
+      _isListening = true;
+      _assistantText = 'Ti ascolto: dimmi dove vuoi andare.';
+      _userSpeechResult = '';
+    });
+    _waveController.repeat();
+
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() => _userSpeechResult = result.recognizedWords);
+        if (result.finalResult) _processVoiceCommand(_userSpeechResult);
+      },
+      listenOptions: stt.SpeechListenOptions(
+        localeId: 'it-IT',
+        partialResults: true,
+        // Tre secondi di silenzio e ha finito di parlare.
+        pauseFor: const Duration(seconds: 3),
+        // Dodici secondi in tutto: piu' di cosi' non e' un comando.
+        listenFor: const Duration(seconds: 12),
+        cancelOnError: true,
+      ),
+    );
+
+    _listenWatchdog?.cancel();
+    _listenWatchdog = Timer(const Duration(seconds: 15), () {
+      if (_isListening) {
+        _stopListening(message: 'Non ho sentito niente.');
+      }
+    });
+  }
+
+  /// Chiude l'ascolto e riporta l'interfaccia a riposo. Idempotente: puo'
+  /// arrivarci sia il timer, sia `onStatus`, sia il tocco sul microfono.
+  Future<void> _stopListening({String? message}) async {
+    _listenWatchdog?.cancel();
+    _listenWatchdog = null;
+    try {
+      await _speech.stop();
+    } catch (_) {
+      // gia' fermo
+    }
+    if (!mounted) return;
+    _waveController.stop();
+    _waveController.value = 0;
+    setState(() {
+      _isListening = false;
+      if (message != null) _assistantText = message;
+    });
+  }
 
   // Elabora il comando vocale dell'utente
   void _processVoiceCommand(String command) async {
-    _speech.stop();
-    _waveController.stop();
+    await _stopListening();
+    if (command.trim().isEmpty) {
+      if (mounted) {
+        setState(() => _assistantText = 'Non ho capito. Riprova.');
+      }
+      return;
+    }
 
     final cmdLower = command.toLowerCase();
-    
+
     if (cmdLower.contains("distributore") || cmdLower.contains("benzina") || cmdLower.contains("carburante")) {
-      setState(() {
-        _isListening = false;
-        _assistantText = "Comando ricevuto: '$command'";
-      });
+      setState(() => _assistantText = "Comando ricevuto: '$command'");
 
       // Sceglie il navigatore migliore disponibile: OsmAnd (offline, con
       // limiti e autovelox) > Waze (solo con rete) > mappa interna.
@@ -598,10 +756,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
 
       await _tts.speak(nav.spokenMessage);
     } else {
-      setState(() {
-        _isListening = false;
-        _assistantText = "Comando non riconosciuto: '$command'. Riprova.";
-      });
+      setState(() =>
+          _assistantText = "Non ho capito: '$command'. Prova con 'distributore'.");
       await _tts.speak("Non ho capito, puoi ripetere il comando?");
     }
   }
@@ -642,8 +798,11 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       userAgentPackageName: 'com.example.monster_sync_app',
       // Con la mappa inclinata servono tile ben oltre il bordo visibile: il
       // fondo della scena e' molto piu' largo di quello che si vede.
-      panBuffer: 2,
-      keepBuffer: 5,
+      // Il piano e' gia' molto piu' grande dello schermo: un buffer di
+      // preload sopra a quello raddoppierebbe le tile da scaricare per
+      // niente.
+      panBuffer: 0,
+      keepBuffer: 3,
     );
     return filter == null
         ? layer
@@ -670,10 +829,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         initialCenter: _myLocation,
         // Zoom alto: in navigazione conta la strada sotto le ruote, non la
         // provincia. La prospettiva ingrandisce ancora il primo piano.
-        initialZoom: 17.0,
+        initialZoom: 18.0,
         initialRotation: _mapRotation,
         minZoom: 14.0,
-        maxZoom: 18.0,
+        maxZoom: 19.0,
         backgroundColor: const Color(0xFF0A0E14),
         interactionOptions: const InteractionOptions(
           // Mappa agganciata alla moto, come i navigatori in navigazione.
@@ -702,9 +861,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
 
         MarkerLayer(
           markers: [
-            // Autovelox
-            ..._autoveloxLocations.map((pos) => Marker(
-                  point: pos,
+            // Autovelox veri, da OpenStreetMap
+            ...SpeedCameraService.instance.cameras.map((c) => Marker(
+                  point: c.at,
                   width: 40,
                   height: 40,
                   alignment: Alignment.bottomCenter,
@@ -798,20 +957,20 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     return Positioned(
       left: 0,
       right: 0,
-      top: y - 62,
-      height: 124,
+      top: y - 66,
+      height: 132,
       child: IgnorePointer(
         child: Center(
           child: SizedBox(
-            width: 124,
-            height: 124,
+            width: 132,
+            height: 132,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 _RippleRing(),
                 SizedBox(
-                  width: 108,
-                  height: 108,
+                  width: 118,
+                  height: 118,
                   child: ModelViewer(
                     src: 'assets/ducati_monster_3d.glb',
                     alt: 'Ducati 3D Model',
@@ -868,6 +1027,33 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
               child: const SizedBox.expand(),
             ),
+          ),
+
+          // Foschia: copre il bordo alto della mappa e fa da orizzonte.
+          IgnorePointer(
+            child: Builder(builder: (ctx) {
+              final size = MediaQuery.of(ctx).size;
+              final edge = _perspectiveOn ? _mapTopEdge(size) : 0.0;
+              if (edge <= 1) return const SizedBox.shrink();
+              return Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  height: edge + 70,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.0, (edge / (edge + 70)).clamp(0.0, 0.95), 1.0],
+                      colors: const [
+                        Color(0xFF0A0E14),
+                        Color(0xCC0A0E14),
+                        Color(0x000A0E14),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
 
           // ── LA MOTO ───────────────────────────────────
@@ -991,9 +1177,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           Positioned(
             top: 12,
             left: 12,
-            width: 170,
+            width: 212,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(16),
@@ -1009,12 +1195,12 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       Row(
                         children: [
                           const Icon(Icons.local_gas_station,
-                              color: Colors.amber, size: 13),
-                          const SizedBox(width: 5),
+                              color: Colors.amber, size: 16),
+                          const SizedBox(width: 6),
                           Text(
                             "SERBATOIO",
                             style: GoogleFonts.orbitron(
-                              fontSize: 8,
+                              fontSize: 10,
                               color: AppTheme.textMuted,
                             ),
                           ),
@@ -1023,7 +1209,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       Text(
                         "${(telemetry.fuelBars / 7 * 100).toInt()}%",
                         style: GoogleFonts.orbitron(
-                          fontSize: 9,
+                          fontSize: 12,
                           color: telemetry.fuelBars <= 2
                               ? AppTheme.alertRed
                               : AppTheme.activeCyan,
@@ -1039,8 +1225,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       final isActive = index < telemetry.fuelBars;
                       return Expanded(
                         child: Container(
-                          height: 7,
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          height: 10,
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
                           decoration: BoxDecoration(
                             color: isActive
                                 ? (telemetry.fuelBars <= 2
@@ -1063,7 +1249,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       Text(
                         "AUTONOMIA",
                         style: GoogleFonts.orbitron(
-                          fontSize: 8,
+                          fontSize: 10,
                           color: AppTheme.textMuted,
                         ),
                       ),
@@ -1071,7 +1257,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       Text(
                         "${telemetry.autonomy.toInt()}",
                         style: GoogleFonts.orbitron(
-                          fontSize: 15,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           height: 1.0,
@@ -1081,7 +1267,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                       Text(
                         "KM",
                         style: GoogleFonts.orbitron(
-                          fontSize: 8,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textMuted,
                         ),
@@ -1097,7 +1283,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           // Sotto al carburante, lontani dal centro dello schermo che e' dove
           // guardi la strada.
           Positioned(
-            top: 116,
+            top: 148,
             left: 12,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1153,7 +1339,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                 children: [
                   // Icona Assistente / Microfono (Stile Siri: rosso con rotazione 3D sull'asse Y)
                   GestureDetector(
-                    onTap: _startVoiceListening,
+                    onTap: _toggleVoiceListening,
                     child: AnimatedBuilder(
                       animation: _rotationController,
                       builder: (context, child) {
@@ -1193,7 +1379,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     ),
                   ),
                   const SizedBox(width: 10),
- 
+
                   // Cerca una destinazione e naviga sulla mappa dell'app
                   GestureDetector(
                     onTap: _openDestinationSearch,
@@ -1258,7 +1444,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     ),
                   ),
                   const SizedBox(width: 16),
- 
+
                   // Messaggio dell'assistente vocale
                   Expanded(
                     child: Column(
@@ -1288,7 +1474,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     ),
                   ),
                   const SizedBox(width: 12),
- 
+
                   // Animazione onda sonora (visualizer)
                   if (_isListening)
                     Row(
@@ -1339,7 +1525,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           if (_internalNavActive || _routeLoading)
             Positioned(
               top: 12,
-              left: 190,   // oltre il riquadro carburante
+              left: 236,   // oltre il riquadro carburante, ora piu' largo
               right: 210,  // prima del meteo e della barra marce
               child: Center(
                 child: ConstrainedBox(
@@ -1462,6 +1648,87 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
             ),
 
+          // ── AVVISO AUTOVELOX ────────────────────────────────────────
+          if (_cameraWarning != null)
+            Positioned(
+              // In alto al centro, sotto la scheda delle indicazioni quando
+              // c'e'. Non in basso: li' ci sono la moto e il pannello
+              // dell'assistente, e un avviso che copre la moto e' un avviso
+              // messo male. In alto invece copre solo la foschia.
+              top: (_internalNavActive || _routeLoading) ? 82 : 12,
+              left: 236,
+              right: 210,
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: _shiftPulse,
+                  builder: (context, child) {
+                    // Sotto i 200 m pulsa; prima resta fisso, per non
+                    // trasformare un avviso in un allarme continuo.
+                    final vicino = _cameraWarning!.distanceM < 200;
+                    final o = vicino ? 0.75 + 0.25 * _shiftPulse.value : 1.0;
+                    return Opacity(opacity: o, child: child);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB01414).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.2), width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.alertRed.withOpacity(0.45),
+                          blurRadius: 16,
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.photo_camera,
+                            color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Text(
+                          'AUTOVELOX ${_cameraWarning!.distanceLabel}',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        if (_cameraWarning!.camera.maxSpeed != null) ...[
+                          const SizedBox(width: 12),
+                          // Il cartello del limite, tondo e rosso come quello vero
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: const Color(0xFFD32F2F), width: 3),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${_cameraWarning!.camera.maxSpeed}',
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // ── BARRA DELLE MARCE LATERALE DX (Full Height) ──
           Positioned(
             top: 0,
@@ -1478,42 +1745,96 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: ["6", "5", "4", "3", "2", "N", "1"].map((g) {
-                  final bool isActive = (_currentGear == 0 && g == "N") || (_currentGear != 0 && _currentGear.toString() == g);
+                  final bool isActive = (_currentGear == 0 && g == "N") ||
+                      (_currentGear != 0 && _currentGear.toString() == g);
+
                   Color activeColor = AppTheme.activeCyan;
                   if (g == "N") {
                     activeColor = Colors.greenAccent.shade400;
                   }
-                  
-                  return Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: isActive ? activeColor.withOpacity(0.2) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: isActive ? activeColor : Colors.white.withOpacity(0.05),
-                          width: isActive ? 2 : 1,
+
+                  // Solo questa cella segue i giri, e li segue in diretta: il
+                  // resto del cruscotto si ridisegna ogni 800 ms, che per un
+                  // consiglio di cambiata sarebbe tardi. Il ListenableBuilder
+                  // tiene il ridisegno confinato alla barra delle marce invece
+                  // di rifare tutta la mappa venti volte al secondo.
+                  final cell = AnimatedBuilder(
+                    animation: Listenable.merge([_shiftPulse, widget.viewModel]),
+                    builder: (context, _) {
+                      final rpm = widget.viewModel.data.rpm;
+                      final suggested = GearAdvisor.suggest(
+                          currentGear: _currentGear, rpm: rpm);
+                      final bool isSuggested =
+                          suggested != null && suggested.toString() == g;
+
+                      // Il respiro non scende mai a zero: la marcia consigliata
+                      // resta leggibile anche nel punto piu' basso del battito.
+                      // Piu' sali di giri, piu' il battito e' marcato.
+                      final urgenza =
+                          GearAdvisor.urgency(currentGear: _currentGear, rpm: rpm);
+                      final glow = isSuggested
+                          ? 0.35 + 0.65 * _shiftPulse.value * (0.5 + urgenza / 2)
+                          : 0.0;
+
+                      final Color borderColor = isActive
+                          ? activeColor
+                          : (isSuggested
+                              ? Colors.amber.withOpacity(0.35 + glow * 0.65)
+                              : Colors.white.withOpacity(0.05));
+
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 2, horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? activeColor.withOpacity(0.2)
+                              : (isSuggested
+                                  ? Colors.amber.withOpacity(0.06 + glow * 0.16)
+                                  : Colors.transparent),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: borderColor,
+                            width: (isActive || isSuggested) ? 2 : 1,
+                          ),
+                          boxShadow: isActive
+                              ? [
+                                  BoxShadow(
+                                    color: activeColor.withOpacity(0.3),
+                                    blurRadius: 4,
+                                  )
+                                ]
+                              : (isSuggested
+                                  ? [
+                                      BoxShadow(
+                                        color:
+                                            Colors.amber.withOpacity(glow * 0.55),
+                                        blurRadius: 6 + glow * 12,
+                                        spreadRadius: glow * 1.5,
+                                      )
+                                    ]
+                                  : null),
                         ),
-                        boxShadow: isActive ? [
-                          BoxShadow(
-                            color: activeColor.withOpacity(0.3),
-                            blurRadius: 4,
-                          )
-                        ] : null,
-                      ),
-                      child: Center(
-                        child: Text(
-                          g,
-                          style: GoogleFonts.orbitron(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: isActive ? activeColor : Colors.white24,
+                        child: Center(
+                          child: Text(
+                            g,
+                            style: GoogleFonts.orbitron(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: isActive
+                                  ? activeColor
+                                  : (isSuggested
+                                      ? Colors.amber
+                                          .withOpacity(0.55 + glow * 0.45)
+                                      : Colors.white24),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
+
+                  return Expanded(child: cell);
                 }).toList(),
               ),
             ),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -212,6 +213,20 @@ class GeocodingService {
       durationS: meters / (45 / 3.6),
       straightLineFallback: true,
     );
+  }
+
+  /// Rotta da [a] verso [b], in gradi da nord.
+  ///
+  /// Finche' la centralina non manda la bussola, la direzione in cui punta la
+  /// moto si ricava cosi': da dove eri a dove sei adesso.
+  static double bearing(LatLng a, LatLng b) {
+    final lat1 = a.latitude * math.pi / 180;
+    final lat2 = b.latitude * math.pi / 180;
+    final dLon = (b.longitude - a.longitude) * math.pi / 180;
+    final y = math.sin(dLon) * math.cos(lat2);
+    final x = math.cos(lat1) * math.sin(lat2) -
+        math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
+    return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
   }
 
   /// Traduce la manovra OSRM in una frase leggibile a colpo d'occhio.
