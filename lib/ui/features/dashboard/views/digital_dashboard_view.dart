@@ -9,6 +9,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
+import 'package:monster_sync_app/ui/core/map_styles.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:monster_sync_app/data/services/weather_service.dart';
 import 'package:monster_sync_app/data/services/navigation_service.dart';
@@ -39,6 +40,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   int _currentGear = 3;
 
   Timer? _telemetryTimer;
+  Timer? _roarStopTimer;
 
   // Stato per la visualizzazione temporanea del pulsante Chiudi (X) tramite swipe down
   bool _showCloseButton = false;
@@ -62,6 +64,39 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   RouteResult? _route;
   int _stepIndex = 0;
   bool _routeLoading = false;
+
+  // ── VISTA IN PROSPETTIVA ──────────────────────────────────────────────────
+  // flutter_map disegna sempre a piombo: non sa cosa sia l'inclinazione della
+  // camera. La si ottiene deformando il widget con una matrice di prospettiva,
+  // che e' poi quello che fanno anche i navigatori veri.
+  //
+  // Questi numeri non sono a occhio: prima di scriverli qui la scena e' stata
+  // montata in CSS con le stesse tile e le stesse proporzioni dello schermo.
+  //  - 54 gradi e fuoco a 625 px mandano la linea d'orizzonte 454 px sopra il
+  //    centro, cioe' fuori dal riquadro: la mappa riempie tutto e non serve
+  //    disegnare un cielo ne' resta un bordo scoperto;
+  //  - con quella inclinazione il fondo si comprime, quindi il widget della
+  //    mappa deve essere largo il doppio e alto 3,6 volte lo schermo, o in
+  //    alto restano strisce vuote.
+  static const double _pitch = 0.942;               // 54 gradi in radianti
+  static const double _perspectiveDepth = 1 / 625.0;
+  static const double _cameraShift = 0.18;          // la moto sotto al centro
+  static const double _planeWidthFactor = 2.0;
+  static const double _planeHeightFactor = 3.6;
+
+  bool _perspectiveOn = true;
+  int _styleIndex = 0;
+  MapStyle get _style => MapStyle.all[_styleIndex];
+
+  void _cycleStyle() {
+    HapticFeedback.selectionClick();
+    setState(() => _styleIndex = (_styleIndex + 1) % MapStyle.all.length);
+  }
+
+  void _togglePerspective() {
+    HapticFeedback.selectionClick();
+    setState(() => _perspectiveOn = !_perspectiveOn);
+  }
 
   // ── RICERCA DESTINAZIONE ──────────────────────────────────────────────────
   Future<void> _openDestinationSearch() async {
@@ -397,15 +432,58 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     // a scrivere i gradi.
     _loadWeather();
 
-    // Avvia un breve ruggito all'avvio della schermata
+    // Ruggito e vibrazione all'apertura del cruscotto: insieme, una volta.
     _playStartRoar();
+    _rumble();
   }
 
+  /// Il ruggito all'apertura del cruscotto — e solo li'.
+  ///
+  /// Tre cose che il semplice `play()` non faceva:
+  ///  - **volume al massimo e canale multimediale**: di suo audioplayers
+  ///    chiede il canale delle notifiche, che con il telefono in tasca sotto
+  ///    la giacca non lo senti;
+  ///  - **abbassa la musica invece di fermarla** (duckOthers): tre secondi di
+  ///    sgasata non devono mettere in pausa quello che stai ascoltando;
+  ///  - **si ferma dopo 3,5 secondi** comunque: dev'essere una sgasata, non un
+  ///    sottofondo. E' l'unico suono del cruscotto, a parte la voce che detta
+  ///    le indicazioni di navigazione.
+  ///
+  /// Il percorso audio resta quello di sistema: se hai l'interfono nel casco
+  /// il ruggito arriva li', non dall'altoparlante del telefono.
   Future<void> _playStartRoar() async {
     try {
-      await _audioPlayer.play(AssetSource('engine_roar.ogg'));
+      await _audioPlayer.setReleaseMode(ReleaseMode.stop);
+      await _audioPlayer.setAudioContext(
+        AudioContextConfig(
+          route: AudioContextConfigRoute.system,
+          focus: AudioContextConfigFocus.duckOthers,
+          respectSilence: false,
+        ).build(),
+      );
+      await _audioPlayer.setVolume(1.0);
+      await _audioPlayer.play(AssetSource('engine_roar.ogg'), volume: 1.0);
+      _roarStopTimer?.cancel();
+      _roarStopTimer = Timer(const Duration(milliseconds: 3500), () {
+        _audioPlayer.stop();
+      });
     } catch (e) {
       debugPrint("Impossibile riprodurre ruggito iniziale: $e");
+    }
+  }
+
+  /// La vibrazione che accompagna il ruggito.
+  ///
+  /// Niente pacchetto `vibration`: su questo progetto una dipendenza nativa in
+  /// piu' e' gia' costata tre build fallite di fila (file_picker, con lo
+  /// scontro fra compileSdk). `HapticFeedback` sta dentro Flutter, non tocca
+  /// il build Android, e ripetuto a intervalli stretti da' il rombo invece del
+  /// singolo colpetto.
+  Future<void> _rumble() async {
+    for (var i = 0; i < 10; i++) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 75));
     }
   }
 
@@ -421,6 +499,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     );
     _telemetryTimer?.cancel();
     _closeButtonTimer?.cancel();
+    _roarStopTimer?.cancel();
     _rotationController.dispose();
     _waveController.dispose();
     _audioPlayer.dispose();
@@ -527,6 +606,233 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     }
   }
 
+  // ── LA MAPPA INCLINATA ───────────────────────────────────────
+  //
+  // Il segno della rotazione e' negativo, e non e' un dettaglio: in CSS un
+  // rotateX positivo allontana il bordo alto, in Flutter — dove l'asse y punta
+  // in basso — succede l'opposto e la mappa si ribalterebbe verso di te.
+  // Verificato con vector_math prima di scriverlo: con +pitch il lontano
+  // ingrandisce invece di rimpicciolire.
+  Widget _buildGround(BuildContext context) {
+    if (!_perspectiveOn) return _buildMap();
+
+    final size = MediaQuery.of(context).size;
+    return ClipRect(
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, _perspectiveDepth)
+          ..translate(0.0, size.height * _cameraShift)
+          ..rotateX(-_pitch),
+        child: OverflowBox(
+          minWidth: size.width * _planeWidthFactor,
+          maxWidth: size.width * _planeWidthFactor,
+          minHeight: size.height * _planeHeightFactor,
+          maxHeight: size.height * _planeHeightFactor,
+          child: _buildMap(),
+        ),
+      ),
+    );
+  }
+
+  /// Un livello di tile, con l'eventuale filtro colore dello stile.
+  Widget _tileLayer(String url, ColorFilter? filter) {
+    final layer = TileLayer(
+      urlTemplate: url,
+      userAgentPackageName: 'com.example.monster_sync_app',
+      // Con la mappa inclinata servono tile ben oltre il bordo visibile: il
+      // fondo della scena e' molto piu' largo di quello che si vede.
+      panBuffer: 2,
+      keepBuffer: 5,
+    );
+    return filter == null
+        ? layer
+        : ColorFiltered(colorFilter: filter, child: layer);
+  }
+
+  /// Raddrizza un marcatore dentro la scena inclinata: resta in piedi sul suo
+  /// punto della strada, come un cartello, invece di essere spalmato
+  /// sull'asfalto insieme a tutto il resto.
+  Widget _billboard(Widget child) {
+    if (!_perspectiveOn) return child;
+    return Transform(
+      alignment: Alignment.bottomCenter,
+      transform: Matrix4.identity()..rotateX(_pitch),
+      child: child,
+    );
+  }
+
+  Widget _buildMap() {
+    final style = _style;
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: _myLocation,
+        // Zoom alto: in navigazione conta la strada sotto le ruote, non la
+        // provincia. La prospettiva ingrandisce ancora il primo piano.
+        initialZoom: 17.0,
+        initialRotation: _mapRotation,
+        minZoom: 14.0,
+        maxZoom: 18.0,
+        backgroundColor: const Color(0xFF0A0E14),
+        interactionOptions: const InteractionOptions(
+          // Mappa agganciata alla moto, come i navigatori in navigazione.
+          flags: InteractiveFlag.none,
+        ),
+      ),
+      children: [
+        _tileLayer(style.urlTemplate, style.filter),
+        // Il satellite da solo non ha i nomi delle strade: glieli rimette
+        // sopra questo livello trasparente.
+        if (style.overlayUrlTemplate != null)
+          _tileLayer(style.overlayUrlTemplate!, null),
+
+        if (_navigationActive)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: _routePoints,
+                color: const Color(0xFF8B5CF6),
+                strokeWidth: 8.0,
+                borderColor: const Color(0xFF5B21B6),
+                borderStrokeWidth: 3.0,
+              ),
+            ],
+          ),
+
+        MarkerLayer(
+          markers: [
+            // Autovelox
+            ..._autoveloxLocations.map((pos) => Marker(
+                  point: pos,
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.bottomCenter,
+                  child: _billboard(Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.8),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.alertRed, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.alertRed.withOpacity(0.4),
+                          blurRadius: 8,
+                        )
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.photo_camera,
+                          color: AppTheme.alertRed, size: 18),
+                    ),
+                  )),
+                )),
+
+            // Distributore
+            Marker(
+              point: _gasStationLocation,
+              width: 44,
+              height: 44,
+              alignment: Alignment.bottomCenter,
+              child: _billboard(Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.85),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.amber, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.amber.withOpacity(0.3),
+                      blurRadius: 8,
+                    )
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.local_gas_station,
+                      color: Colors.amber, size: 20),
+                ),
+              )),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _viewButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.12)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppTheme.activeCyan),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.orbitron(
+                fontSize: 7.5,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// La moto, ancorata dove il centro della mappa finisce sullo schermo.
+  Widget _buildRider(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final y = size.height * (0.5 + (_perspectiveOn ? _cameraShift : 0.0));
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: y - 62,
+      height: 124,
+      child: IgnorePointer(
+        child: Center(
+          child: SizedBox(
+            width: 124,
+            height: 124,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                _RippleRing(),
+                SizedBox(
+                  width: 108,
+                  height: 108,
+                  child: ModelViewer(
+                    src: 'assets/ducati_monster_3d.glb',
+                    alt: 'Ducati 3D Model',
+                    cameraControls: false,
+                    disableZoom: true,
+                    autoRotate: false,
+                    // Da dietro e dall'alto, l'inquadratura che hai stando
+                    // sopra la moto.
+                    cameraOrbit: '0deg 22deg 65%',
+                    shadowIntensity: 0.0,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final telemetry = widget.viewModel.data;
@@ -541,163 +847,34 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         },
         child: Stack(
           children: [
-          // ── MAPPA COMPLETA A SCHERMO INTERO ─────────────────────────
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _myLocation,
-              initialZoom: 17.0,   // Zoom alto stile Waze (vista ravvicinata sulla strada)
-              initialRotation: _mapRotation, // heading simulato; diventera' quello vero dal GPS
-              minZoom: 14.0,
-              maxZoom: 18.0,
-              // Colore sotto le tile: copre i bordi che la rotazione di 15°
-              // lascerebbe scoperti, invece del nero pieno.
-              backgroundColor: const Color(0xFF12151A),
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.none, // Mappa bloccata sul rider come Waze in navigazione
+          // ── LA STRADA, INCLINATA COME LA VEDI DALLA SELLA ───────────
+          _buildGround(context),
+
+          // Velo scuro sopra la mappa. Senza, la fotografia aerea di giorno
+          // sbianca tutto e i numeri al neon del cruscotto spariscono. E'
+          // fitto in alto (il lontano) e quasi trasparente in basso, dove c'e'
+          // la strada che stai per prendere: la stessa cosa che fa la foschia.
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.18, 0.45, 1.0],
+                  colors: _style.tintOpacity
+                      .map((o) => const Color(0xFF04080E).withOpacity(o))
+                      .toList(),
+                ),
               ),
+              child: const SizedBox.expand(),
             ),
-            children: [
-              // Tema scuro da OSM: INVERSIONE + ROTAZIONE DI TINTA DI 180°.
-              //
-              // La sola inversione (com'era prima) ribalta anche la tinta: il verde
-              // dei parchi diventa viola e le strade illeggibili. Ruotando la tinta
-              // di 180° dopo l'inversione, ogni colore torna al suo (il verde resta
-              // verde, scuro) e si ottiene un vero tema notturno.
-              //
-              // CartoDB Dark Matter sarebbe più bella ma ora pretende una API key:
-              // senza chiave serve tile con la scritta "API KEY REQUIRED" sopra.
-              ColorFiltered(
-                colorFilter: const ColorFilter.matrix([
-                   0.574, -1.430, -0.144, 0, 255,
-                  -0.426, -0.430, -0.144, 0, 255,
-                  -0.426, -1.430,  0.856, 0, 255,
-                   0.0,    0.0,    0.0,   1, 0,
-                ]),
-                child: TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.monster_sync_app',
-                  // Con la mappa ruotata servono tile oltre il bordo visibile,
-                  // altrimenti agli angoli resta il fondo scoperto.
-                  panBuffer: 2,
-                  keepBuffer: 5,
-                ),
-              ),
-
-              // Polilinee di Navigazione (Rotta)
-              if (_navigationActive)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _routePoints,
-                      color: const Color(0xFF8B5CF6), // Viola stile Waze
-                      strokeWidth: 8.0,
-                      isDotted: false,
-                      borderColor: const Color(0xFF5B21B6),
-                      borderStrokeWidth: 3.0,
-                    ),
-                  ],
-                ),
-
-              // Marcatori sulla mappa (Posizione moto con Modello 3D, Autovelox, Distributori)
-              MarkerLayer(
-                markers: [
-                  // 1. Moto (Posizione Attuale con Modello 3D reale che naviga)
-                  Marker(
-                    point: _myLocation,
-                    width: 130,
-                    height: 130,
-                    alignment: Alignment.center, // il centro del modello sul punto GPS
-                    // Il marker NON ruota con la mappa: resta allineato allo schermo,
-                    // così la moto punta sempre verso l'alto — la vista che hai
-                    // davvero quando ci sei sopra.
-                    rotate: true,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Effetto onda di localizzazione pulsante sotto la moto
-                        _RippleRing(),
-                        IgnorePointer(
-                          child: SizedBox(
-                            width: 110,
-                            height: 110,
-                            child: ModelViewer(
-                              src: 'assets/ducati_monster_3d.glb',
-                              alt: 'Ducati 3D Model',
-                              cameraControls: false,
-                              disableZoom: true,
-                              autoRotate: false,
-                              // Vista dall'alto e leggermente da dietro, come se
-                              // fossi in sella: phi basso = quasi a piombo.
-                              // Se la moto risultasse girata al contrario, cambia
-                              // il primo valore da 0deg a 180deg.
-                              cameraOrbit: '0deg 22deg 65%',
-                              shadowIntensity: 0.0,
-                              backgroundColor: Colors.transparent,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // 2. Autovelox
-                  ..._autoveloxLocations.map((pos) => Marker(
-                    point: pos,
-                    width: 40,
-                    height: 40,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.8),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.alertRed, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.alertRed.withOpacity(0.4),
-                            blurRadius: 8,
-                          )
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.photo_camera,
-                          color: AppTheme.alertRed,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  )),
-
-                  // 3. Distributore IP (se navigazione attiva o mostrato vicino)
-                  Marker(
-                    point: _gasStationLocation,
-                    width: 44,
-                    height: 44,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.85),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.amber, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.withOpacity(0.3),
-                            blurRadius: 8,
-                          )
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.local_gas_station,
-                          color: Colors.amber,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
+
+          // ── LA MOTO ───────────────────────────────────
+          // Sta fuori dalla mappa, non dentro: se fosse un marcatore la
+          // prospettiva la schiaccerebbe insieme all'asfalto. Cosi' resta
+          // nitida e in piedi, e tu la guardi da dietro e dall'alto.
+          _buildRider(context),
 
           // ── PULSANTE CHIUDI A SCOMPARSA (Swipe down per visualizzarlo al centro in alto) ──
           AnimatedPositioned(
@@ -916,12 +1093,38 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             ),
           ),
 
+          // ── COMANDI DELLA VISTA ─────────────────────────────────────
+          // Sotto al carburante, lontani dal centro dello schermo che e' dove
+          // guardi la strada.
+          Positioned(
+            top: 116,
+            left: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _viewButton(
+                  icon: _style.icon,
+                  label: _style.name,
+                  onTap: _cycleStyle,
+                ),
+                const SizedBox(height: 8),
+                _viewButton(
+                  icon: _perspectiveOn
+                      ? Icons.threed_rotation
+                      : Icons.crop_square,
+                  label: _perspectiveOn ? '3D' : '2D',
+                  onTap: _togglePerspective,
+                ),
+              ],
+            ),
+          ),
+
           // Attribuzione cartografica: piccola ma dovuta (OpenStreetMap)
           Positioned(
             left: 16,
             bottom: 2,
             child: Text(
-              "© OpenStreetMap contributors",
+              _style.attribution,
               style: GoogleFonts.orbitron(
                 fontSize: 6,
                 color: Colors.white.withOpacity(0.35),

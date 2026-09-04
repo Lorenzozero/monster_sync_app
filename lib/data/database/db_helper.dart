@@ -21,7 +21,7 @@ class DbHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE rides (
@@ -34,13 +34,33 @@ class DbHelper {
             dist_km REAL DEFAULT 0,
             roll TEXT,
             speed TEXT,
-            rpm TEXT
+            rpm TEXT,
+            l_per_100 REAL DEFAULT 0
           )
         ''');
         await _createVehicleIdentity(db);
         await _insertDemoRides(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 4) {
+          // Consumo medio del giro, in litri ogni 100 km. Serve a calcolare
+          // litri bruciati ed euro spesi (vedi FuelPriceService).
+          try {
+            await db.execute(
+                'ALTER TABLE rides ADD COLUMN l_per_100 REAL DEFAULT 0');
+          } catch (_) {
+            // colonna gia' presente: niente da fare
+          }
+          // I giri registrati prima di questa versione non hanno il dato:
+          // si assegna il consumo di riferimento della 695, dichiarandolo
+          // come stima nell'interfaccia.
+          try {
+            await db.rawUpdate(
+                'UPDATE rides SET l_per_100 = ? '
+                'WHERE l_per_100 IS NULL OR l_per_100 <= 0',
+                [defaultConsumptionL100]);
+          } catch (_) {}
+        }
         if (oldVersion < 3) {
           await _createVehicleIdentity(db);
         }
@@ -63,6 +83,27 @@ class DbHelper {
         }
       },
     );
+  }
+
+  // ── Consumo di riferimento ────────────────────────────────────────────────
+  // Ducati Monster 695 (Desmodue 695 cc, 73 CV): nell'uso reale sta fra 4,8
+  // l/100km in statale tranquilla e 6,5 l/100km tirata fra i tornanti. 5,5 e'
+  // il valore misto, usato quando il giro non porta con se' un consumo suo
+  // (giri vecchi, o centralina non ancora collegata).
+  static const double defaultConsumptionL100 = 5.5;
+
+  /// Consumo del giro, con il valore di riferimento come rete di sicurezza.
+  static double consumptionOf(Map<String, dynamic> ride) {
+    final v = ride['l_per_100'];
+    if (v is num && v > 0) return v.toDouble();
+    return defaultConsumptionL100;
+  }
+
+  /// Km del giro, dal campo numerico o rileggendo il testo "12.4 km".
+  static double kmOf(Map<String, dynamic> ride) {
+    final v = ride['dist_km'];
+    if (v is num && v > 0) return v.toDouble();
+    return _parseKm(ride['dist'] as String? ?? '');
   }
 
   // ── Identità veicolo ────────────────────────────────────────────────────────
@@ -125,6 +166,7 @@ class DbHelper {
       'roll': '42° (SX) / 38° (DX)',
       'speed': '142 km/h',
       'rpm': '7800 RPM',
+      'l_per_100': 6.4,
     });
     await db.insert('rides', {
       'title': 'Giro Recente 2',
@@ -136,6 +178,7 @@ class DbHelper {
       'roll': '39° (SX) / 41° (DX)',
       'speed': '148 km/h',
       'rpm': '8100 RPM',
+      'l_per_100': 5.9,
     });
     await db.insert('rides', {
       'title': 'Prova strada',
@@ -147,6 +190,7 @@ class DbHelper {
       'roll': '35° (SX) / 33° (DX)',
       'speed': '131 km/h',
       'rpm': '7100 RPM',
+      'l_per_100': 5.1,
     });
   }
 

@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/value_tooltip.dart';
 import '../../../../data/database/db_helper.dart';
+import '../../../../data/services/fuel_price_service.dart';
 
 class StatsView extends StatefulWidget {
   const StatsView({super.key});
@@ -20,10 +21,43 @@ class _StatsViewState extends State<StatsView> {
   List<Map<String, dynamic>> _logs = [];
   bool _isLoading = true;
 
+  // Prezzo della benzina di oggi, dai dati aperti del MIMIT. Null finche' la
+  // prima lettura non arriva: senza di lui i costi non si possono scrivere.
+  FuelPrice? _fuel;
+
   @override
   void initState() {
     super.initState();
     _loadLogs();
+    _loadFuelPrice();
+  }
+
+  Future<void> _loadFuelPrice() async {
+    final p = await FuelPriceService.instance.current();
+    if (mounted) setState(() => _fuel = p);
+  }
+
+  /// Costo di un giro. Null finche' non si conosce il prezzo del carburante.
+  RideCost? _costOf(Map<String, dynamic> log) {
+    final price = _fuel;
+    if (price == null) return null;
+    final km = DbHelper.kmOf(log);
+    if (km <= 0) return null;
+    return RideCost.compute(
+      km: km,
+      lPer100: DbHelper.consumptionOf(log),
+      price: price,
+    );
+  }
+
+  /// Spesa complessiva di tutti i giri in elenco.
+  double _totalEuro() {
+    double t = 0;
+    for (final l in _logs) {
+      final c = _costOf(l);
+      if (c != null) t += c.euro;
+    }
+    return t;
   }
 
   @override
@@ -104,13 +138,16 @@ class _StatsViewState extends State<StatsView> {
 
   // ── CONDIVIDI SU WHATSAPP ────────────────────────────────────────────────────
   void _shareOnWhatsApp(Map<String, dynamic> log) {
+    final cost = _costOf(log);
     final text = '''🏍️ *MonsterSync – ${log['title']}*
 
 📅 Data: ${log['date'] ?? 'N/D'}
 📏 Distanza: ${log['dist'] ?? 'N/D'}
 🏎️ Velocità max: ${log['speed'] ?? 'N/D'}
 🔄 Giri max: ${log['rpm'] ?? 'N/D'}
-↩️ Piega max: ${log['roll'] ?? 'N/D'}
+↩️ Piega max: ${log['roll'] ?? 'N/D'}${cost == null ? '' : '''
+⛽ Carburante: ${cost.litresLabel} (${cost.consumptionLabel})
+💶 Costo: ${cost.euroLabel} a ${cost.price.label}'''}
 
 _Esportato da MonsterSync per Ducati Monster 695_''';
 
@@ -235,6 +272,8 @@ _Esportato da MonsterSync per Ducati Monster 695_''';
       final double lngOffset = 0.0035 * math.cos(angle * 2) * (1 - 0.12 * (rideId % 2));
       routePoints.add(LatLng(startLat + latOffset, startLng + lngOffset));
     }
+
+    final cost = _costOf(log);
 
     showModalBottomSheet(
       context: context,
@@ -386,6 +425,45 @@ _Esportato da MonsterSync per Ducati Monster 695_''';
                       _metric(ctx, Icons.rotate_90_degrees_cw, log['roll'] ?? '--', 'PIEGA MAX'),
                     ],
                   ),
+                  if (cost != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _metric(ctx, Icons.local_gas_station,
+                            cost.litresLabel, 'CARBURANTE'),
+                        const SizedBox(width: 12),
+                        _metric(ctx, Icons.euro, cost.euroLabel, 'COSTO'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _metric(ctx, Icons.water_drop_outlined,
+                            cost.consumptionLabel, 'CONSUMO'),
+                        const SizedBox(width: 12),
+                        _metric(ctx, Icons.route, cost.kmPerLitreLabel,
+                            'PERCORRENZA'),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Da dove arriva il prezzo: senza questa riga il numero in
+                    // euro sembrerebbe inventato.
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 11, color: Colors.white.withOpacity(0.35)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Benzina self a ${cost.price.label} — '
+                            '${cost.price.sourceLabel}',
+                            style: AppTheme.interLabel.copyWith(
+                                color: Colors.white38, fontSize: 9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   
                   // Condivisione (Solo icone WhatsApp e Waze, senza scritte)
@@ -437,6 +515,7 @@ _Esportato da MonsterSync per Ducati Monster 695_''';
 
   Widget _buildRideRow(int index) {
     final log = _logs[index];
+    final cost = _costOf(log);
 
     return Dismissible(
       key: Key('ride_${log['id']}_$index'),
@@ -539,6 +618,19 @@ _Esportato da MonsterSync per Ducati Monster 695_''';
                       fontSize: 9.5,
                     ),
                   ),
+                  // Quanto e' costato il giro: il dato che manca sempre e che
+                  // in moto interessa quanto la velocita' di punta.
+                  if (cost != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${cost.euroLabel} · ${cost.litresLabel}',
+                      style: AppTheme.interLabel.copyWith(
+                        color: Colors.amber.withOpacity(0.85),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(width: 10),
@@ -567,6 +659,32 @@ _Esportato da MonsterSync per Ducati Monster 695_''';
       valText = value.replaceAll(' RPM', '');
       unitText = 'RPM';
       explanationText = 'Il regime di rotazione del motore massimo (in RPM) registrato dai sensori di iniezione.';
+    } else if (label == 'CARBURANTE') {
+      valText = value.replaceAll(' l', '');
+      unitText = 'LITRI';
+      explanationText =
+          'Litri bruciati nel giro: chilometri percorsi per il consumo medio '
+          'registrato. Con la centralina collegata il consumo arriva dal '
+          'sensore, non da una stima.';
+    } else if (label == 'COSTO') {
+      valText = value.replaceAll(' €', '');
+      unitText = 'EURO';
+      explanationText =
+          'Quanto è costato il giro, ai prezzi di oggi. Il prezzo è la '
+          'mediana della benzina self di tutti gli impianti italiani, dai dati '
+          'aperti Osservaprezzi del MIMIT, aggiornati ogni mattina.';
+    } else if (label == 'CONSUMO') {
+      valText = value.replaceAll(' l/100km', '');
+      unitText = 'L/100KM';
+      explanationText =
+          'Consumo medio del giro. La Monster 695 sta fra 4,8 l/100km in '
+          'statale tranquilla e 6,5 l/100km tirata fra i tornanti.';
+    } else if (label == 'PERCORRENZA') {
+      valText = value.replaceAll(' km/l', '');
+      unitText = 'KM/L';
+      explanationText =
+          'Chilometri percorsi con un litro: lo stesso dato del consumo, letto '
+          'come si legge al distributore.';
     } else if (label == 'PIEGA MAX') {
       valText = value;
       unitText = '';
@@ -664,6 +782,15 @@ _Esportato da MonsterSync per Ducati Monster 695_''';
                           style: AppTheme.orbitronLabel
                               .copyWith(color: Colors.white38, fontSize: 8),
                         ),
+                        if (_fuel != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            '${_totalEuro().toStringAsFixed(2)} € DI BENZINA',
+                            style: AppTheme.orbitronLabel.copyWith(
+                                color: Colors.amber.withOpacity(0.8),
+                                fontSize: 8),
+                          ),
+                        ],
                       ],
                     ),
                 ],
