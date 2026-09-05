@@ -85,7 +85,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   //  - con quella inclinazione il fondo si comprime, quindi il widget della
   //    mappa deve essere largo il doppio e alto 3,6 volte lo schermo, o in
   //    alto restano strisce vuote.
-  static const double _pitch = 1.082;               // 62 gradi in radianti
+  static const double _pitch = 1.152;               // 66 gradi in radianti
   static const double _perspectiveDepth = 1 / 625.0;
   /// Quanto la scena scende rispetto al centro dello schermo — cioe' dove
   /// finisce la moto.
@@ -118,7 +118,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   /// Una sola vista, satellite e inclinata. I due pulsanti che ciclavano gli
   /// stili e spegnevano il 3D sono spariti: in moto una scelta da fare e' una
   /// scelta di troppo.
-  static const MapStyle _style = MapStyle.satellite;
+  static const MapStyle _style = MapStyle.chiara;
 
   // ── AUTOVELOX ─────────────────────────────────────────────────────────────
   // Le posizioni stanno in cache sul telefono (vedi SpeedCameraService):
@@ -832,17 +832,16 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         initialRotation: -_heading,
         minZoom: 14.0,
         maxZoom: 19.0,
-        backgroundColor: const Color(0xFF0A0E14),
+        backgroundColor: _style.hazeColor,
         interactionOptions: const InteractionOptions(
           // Mappa agganciata alla moto, come i navigatori in navigazione.
           flags: InteractiveFlag.none,
         ),
       ),
       children: [
+        // La carta OSM ha gia' dentro i nomi delle vie: non serve un
+        // secondo livello sopra, come serviva alla fotografia aerea.
         _tileLayer(style.urlTemplate),
-        // Il satellite da solo non ha i nomi delle strade: glieli rimette
-        // sopra questo livello trasparente.
-        _tileLayer(style.overlayUrlTemplate),
 
         if (_navigationActive)
           PolylineLayer(
@@ -935,7 +934,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                 // diventa l'ellisse che un cerchio disegnato sull'asfalto fa
                 // vedere da questa angolazione.
                 Transform.scale(
-                  scaleY: 0.47,
+                  // cos(66°): l'ellisse che un cerchio sull'asfalto fa vedere
+                  // da questa angolazione.
+                  scaleY: 0.41,
                   child: _RippleRing(),
                 ),
                 SizedBox(
@@ -949,16 +950,16 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     autoRotate: false,
                     // **L'angolo della moto deve essere quello della strada.**
                     // Era a 22 gradi: la moto vista quasi a piombo, appoggiata
-                    // su un asfalto inclinato di 62 — due punti di vista
+                    // su un asfalto inclinato di 66 — due punti di vista
                     // diversi nella stessa immagine, ed e' quello che la faceva
                     // sembrare incollata sopra invece che dentro la scena.
                     // Il secondo valore di cameraOrbit e' l'angolo dalla
-                    // verticale: messo a 62 come l'inclinazione del piano, la
+                    // verticale: messo a 66 come l'inclinazione del piano, la
                     // moto e la strada si guardano dallo stesso punto.
                     // Piu' lontana del prima (era 65%): vista di taglio la
                     // moto e' lunga, e a distanza ravvicinata il modello
                     // finiva tagliato ai bordi del riquadro.
-                    cameraOrbit: '0deg 62deg 105%',
+                    cameraOrbit: '0deg 66deg 105%',
                     // L'ombra la appoggia per terra. Morbida, o sembra
                     // ritagliata col cutter.
                     shadowIntensity: 0.9,
@@ -991,49 +992,42 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           // ── LA STRADA, INCLINATA COME LA VEDI DALLA SELLA ───────────
           _buildGround(context),
 
-          // Velo scuro sopra la mappa. Senza, la fotografia aerea di giorno
-          // sbianca tutto e i numeri al neon del cruscotto spariscono. E'
-          // fitto in alto (il lontano) e quasi trasparente in basso, dove c'e'
-          // la strada che stai per prendere: la stessa cosa che fa la foschia.
-          IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.18, 0.45, 1.0],
-                  colors: _style.tintOpacity
-                      .map((o) => const Color(0xFF04080E).withOpacity(o))
-                      .toList(),
-                ),
-              ),
-              child: const SizedBox.expand(),
-            ),
-          ),
-
-          // Foschia: copre il bordo alto della mappa e fa da orizzonte.
+          // ── LA DISTANZA CHE SBIANCA ─────────────────────────────────
+          // Un velo solo, del colore della carta. Fa due lavori in uno:
+          // copre il bordo alto della mappa (dove il piano finisce) e da'
+          // profondita', perche' e' quello che fa la foschia davvero — il
+          // lontano non diventa scuro, diventa lattiginoso.
+          //
+          // Sulla fotografia aerea di prima il velo era nero, per non farsi
+          // sbiancare i numeri al neon dal sole sui tetti. Su una carta chiara
+          // un velo nero farebbe fango: i riquadri dell'interfaccia hanno gia'
+          // il loro fondo scuro e si leggono da soli.
           IgnorePointer(
             child: Builder(builder: (ctx) {
               final size = MediaQuery.of(ctx).size;
               final edge = _mapTopEdge(size);
-              if (edge <= 1) return const SizedBox.shrink();
-              return Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  height: edge + 70,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: [0.0, (edge / (edge + 70)).clamp(0.0, 0.95), 1.0],
-                      colors: const [
-                        Color(0xFF0A0E14),
-                        Color(0xCC0A0E14),
-                        Color(0x000A0E14),
-                      ],
-                    ),
+              final fine = ((edge + size.height * 0.42) / size.height)
+                  .clamp(0.0, 1.0);
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [
+                      0.0,
+                      (edge / size.height).clamp(0.0, fine),
+                      fine,
+                      1.0,
+                    ],
+                    colors: [
+                      _style.hazeColor,
+                      _style.hazeColor.withOpacity(0.82),
+                      _style.hazeColor.withOpacity(0.0),
+                      _style.hazeColor.withOpacity(0.0),
+                    ],
                   ),
                 ),
+                child: const SizedBox.expand(),
               );
             }),
           ),
@@ -1269,7 +1263,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               _style.attribution,
               style: GoogleFonts.orbitron(
                 fontSize: 6,
-                color: Colors.white.withOpacity(0.35),
+                color: _style.inkColor,
               ),
             ),
           ),
@@ -1857,7 +1851,10 @@ class _RippleRingState extends State<_RippleRing> with SingleTickerProviderState
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: AppTheme.activeCyan.withOpacity(1.0 - _controller.value),
+              // Blu pieno, non il ciano del cruscotto: su una carta chiara
+              // il ciano al neon e' quasi bianco e l'onda sparisce.
+              color: const Color(0xFF1565D8)
+                  .withOpacity(1.0 - _controller.value),
               width: 1.5,
             ),
           ),
