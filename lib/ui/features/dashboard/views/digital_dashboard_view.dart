@@ -17,6 +17,8 @@ import 'package:monster_sync_app/data/services/navigation_service.dart';
 import 'package:monster_sync_app/data/services/geocoding_service.dart';
 import 'package:monster_sync_app/data/services/speed_camera_service.dart';
 import 'package:monster_sync_app/data/services/gear_advisor.dart';
+import 'package:monster_sync_app/data/services/route_planner.dart';
+import 'package:monster_sync_app/data/services/roadworks_service.dart';
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -250,17 +252,294 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     );
 
     ctl.dispose();
-    if (picked != null) await _startInternalNavigation(picked);
+    if (picked != null) await _chooseRoute(picked);
   }
 
-  // ── NAVIGAZIONE SULLA MAPPA DELL'APP ──────────────────────────────────────
-  Future<void> _startInternalNavigation(Place dest) async {
+  // ── SCELTA DEL PERCORSO ───────────────────────────────────────────────────
+  //
+  // Prima si partiva sull'unico percorso che tornava OSRM. Adesso Valhalla ne
+  // propone fino a tre e la scelta e' tua, con davanti quello che serve per
+  // decidere: quanto ci metti, quanto costa di benzina, quanti autovelox ci
+  // sono sopra e quante curve — che su una Monster non e' un dettaglio.
+  Future<void> _chooseRoute(Place dest) async {
     setState(() {
       _routeLoading = true;
       _selectedDestinationName = dest.name;
     });
 
-    final r = await GeocodingService.instance.route(_myLocation, dest.coord);
+    final opts = await RoutePlanner.instance.alternatives(_myLocation, dest.coord);
+    if (!mounted) return;
+    setState(() => _routeLoading = false);
+
+    // Una sola possibilita' (o nessuna rete): non c'e' niente da scegliere.
+    if (opts.length < 2) {
+      await _startWithRoute(dest, opts.first.route);
+      return;
+    }
+
+    final scelta = await _showRouteOptions(opts);
+    if (scelta == null) {
+      // Ripensamento: si torna com'era, senza destinazione appesa.
+      if (mounted) setState(() => _selectedDestinationName = '');
+      return;
+    }
+    await _startWithRoute(dest, scelta.route);
+  }
+
+  /// La schermata di confronto. Ritorna il percorso scelto, o null.
+  ///
+  /// I cantieri arrivano da Overpass e ci mettono qualche secondo: la
+  /// schermata non li aspetta, si apre subito con quello che e' gia' noto e
+  /// li aggiunge quando arrivano.
+  Future<RouteOption?> _showRouteOptions(List<RouteOption> opts) {
+    var lista = opts;
+    final piuVeloce = _indiceMin(lista, (o) => o.route.durationS);
+    final piuEconomico = _indiceMin(lista, (o) => o.euro ?? 1e9);
+    final piuCurve = _indiceMin(lista, (o) => -o.curves.toDouble());
+
+    return showModalBottomSheet<RouteOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0B0D10),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          // Una richiesta sola per tutte le alternative insieme.
+          if (lista.every((o) => o.roadworks == null)) {
+            RoadworksService.instance
+                .along([for (final o in lista) o.route.points]).then((cantieri) {
+              if (cantieri == null) return;
+              setSheet(() {
+                lista = [
+                  for (final o in lista)
+                    o.withRoadworks(
+                        RoadworksService.countOn(cantieri, o.route.points))
+                ];
+              });
+            });
+          }
+
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.9),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.alt_route,
+                          color: AppTheme.activeCyan, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'PERCORSI PER ${_selectedDestinationName.toUpperCase()}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.orbitron(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                    itemCount: lista.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _routeCard(
+                      ctx,
+                      lista[i],
+                      veloce: i == piuVeloce,
+                      economico: i == piuEconomico && piuEconomico != piuVeloce,
+                      curve: i == piuCurve &&
+                          piuCurve != piuVeloce &&
+                          piuCurve != piuEconomico,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+                  child: Text(
+                    'Tempi e percorsi da Valhalla (OpenStreetMap), costo alla '
+                    'benzina di oggi, autovelox e cantieri da OSM. Il traffico '
+                    'in tempo reale non è disponibile senza un servizio a '
+                    'pagamento.',
+                    style: GoogleFonts.inter(
+                        fontSize: 9, color: AppTheme.textMuted, height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static int _indiceMin(List<RouteOption> l, double Function(RouteOption) f) {
+    var best = 0;
+    for (var i = 1; i < l.length; i++) {
+      if (f(l[i]) < f(l[best])) best = i;
+    }
+    return best;
+  }
+
+  Widget _routeCard(BuildContext ctx, RouteOption o,
+      {required bool veloce, required bool economico, required bool curve}) {
+    final etichette = <(String, Color)>[
+      if (veloce) ('PIÙ VELOCE', AppTheme.activeCyan),
+      if (economico) ('PIÙ ECONOMICO', Colors.amber),
+      if (curve) ('PIÙ CURVE', const Color(0xFFB388FF)),
+      if (o.hasHighway) ('AUTOSTRADA', Colors.white54),
+      if (o.hasToll) ('PEDAGGIO', Colors.white54),
+      if (o.hasFerry) ('TRAGHETTO', Colors.white54),
+    ];
+
+    return InkWell(
+      onTap: () => Navigator.pop(ctx, o),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: veloce
+                ? AppTheme.activeCyan.withOpacity(0.5)
+                : Colors.white.withOpacity(0.08),
+            width: veloce ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Text(
+                    'via ${o.mainRoad}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.orbitron(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  o.durationLabel,
+                  style: GoogleFonts.orbitron(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: veloce ? AppTheme.activeCyan : Colors.white,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  o.route.distanceLabel,
+                  style: GoogleFonts.orbitron(
+                      fontSize: 10, color: AppTheme.textMuted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Wrap(
+              spacing: 14,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _routeStat(Icons.euro, o.euroLabel, Colors.amber),
+                _routeStat(Icons.photo_camera, '${o.speedCameras}',
+                    o.speedCameras > 0 ? AppTheme.alertRed : AppTheme.textMuted),
+                _routeStat(Icons.all_inclusive,
+                    '${o.curves} curve · ${o.tightCurves} strette',
+                    const Color(0xFFB388FF)),
+                // Finché Overpass non risponde qui non c'è niente, invece di
+                // uno zero che sembrerebbe "nessun cantiere".
+                if (o.roadworks != null)
+                  _routeStat(
+                      Icons.construction,
+                      o.roadworks == 0 ? 'nessun cantiere' : '${o.roadworks}',
+                      o.roadworks == 0 ? AppTheme.textMuted : Colors.orange)
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 1.5, color: Colors.white24),
+                      ),
+                      const SizedBox(width: 6),
+                      Text('cantieri…',
+                          style: GoogleFonts.inter(
+                              fontSize: 10, color: Colors.white24)),
+                    ],
+                  ),
+              ],
+            ),
+            if (etichette.isNotEmpty) ...[
+              const SizedBox(height: 9),
+              Wrap(
+                spacing: 6,
+                runSpacing: 5,
+                children: [
+                  for (final (testo, colore) in etichette)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: colore.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: colore.withOpacity(0.45)),
+                      ),
+                      child: Text(
+                        testo,
+                        style: GoogleFonts.orbitron(
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.bold,
+                          color: colore,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _routeStat(IconData icona, String testo, Color colore) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icona, size: 13, color: colore),
+          const SizedBox(width: 5),
+          Text(testo,
+              style: GoogleFonts.inter(
+                  fontSize: 11, color: colore, fontWeight: FontWeight.w600)),
+        ],
+      );
+
+  // ── PARTENZA SUL PERCORSO SCELTO ──────────────────────────────────────────
+  Future<void> _startWithRoute(Place dest, RouteResult r) async {
     if (!mounted) return;
 
     setState(() {
@@ -271,6 +550,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       _internalNavActive = true;
       _navigationActive = true;
       _routeLoading = false;
+      _selectedDestinationName = dest.name;
       _internalEta = r.etaLabel;
       _internalRemainingDist = r.distanceLabel;
       _internalNextTurn = r.steps.isNotEmpty ? r.steps.first.streetName : '';
@@ -373,31 +653,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
 
   static String _fmtDistance(double m) =>
       m >= 1000 ? '${(m / 1000).toStringAsFixed(1)} km' : '${m.round()} m';
-
-  IconData _maneuverIcon(RouteStep s) {
-    if (s.maneuver == 'arrive') return Icons.flag;
-    if (s.maneuver == 'roundabout' || s.maneuver == 'rotary') {
-      return Icons.roundabout_right;
-    }
-    switch (s.modifier) {
-      case 'left':
-        return Icons.turn_left;
-      case 'right':
-        return Icons.turn_right;
-      case 'slight left':
-        return Icons.turn_slight_left;
-      case 'slight right':
-        return Icons.turn_slight_right;
-      case 'sharp left':
-        return Icons.turn_sharp_left;
-      case 'sharp right':
-        return Icons.turn_sharp_right;
-      case 'uturn':
-        return Icons.u_turn_left;
-      default:
-        return Icons.straight;
-    }
-  }
 
   void _triggerShowCloseButton() {
     if (!mounted) return;
@@ -1518,7 +1773,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                             children: [
                               Icon(
                                 _route != null && _route!.steps.isNotEmpty
-                                    ? _maneuverIcon(_route!.steps[_stepIndex])
+                                    ? RoutePlanner.maneuverIcon(
+                                        _route!.steps[_stepIndex].maneuver)
                                     : Icons.straight,
                                 color: Colors.white,
                                 size: 34,

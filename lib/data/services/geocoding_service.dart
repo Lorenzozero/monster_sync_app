@@ -9,9 +9,11 @@ import 'package:latlong2/latlong.dart';
 ///
 /// Tutto su servizi aperti e senza chiave API:
 ///   - **Nominatim** (OpenStreetMap) per cercare un posto per nome
-///   - **OSRM** per calcolare il percorso stradale e le indicazioni di svolta
 ///
-/// Servono entrambi la rete. Sono i server pubblici di cortesia dei due
+/// Il calcolo del percorso è passato a Valhalla, vedi `route_planner.dart`:
+/// OSRM pubblico non sa dare alternative.
+///
+/// Serve la rete. Sono i server pubblici di cortesia dei due
 /// progetti: vanno usati con parsimonia (una richiesta per volta, User-Agent
 /// vero) e non sono adatti a un'app distribuita a migliaia di persone. Per
 /// quello si passa a un'istanza propria o a un servizio a pagamento.
@@ -138,83 +140,6 @@ class GeocodingService {
     }
   }
 
-  /// Percorso stradale da [from] a [to]. Se OSRM non risponde ritorna la linea
-  /// retta, segnalandolo con [straightLineFallback].
-  Future<RouteResult> route(LatLng from, LatLng to) async {
-    final uri = Uri.parse(
-      'https://router.project-osrm.org/route/v1/driving/'
-      '${from.longitude},${from.latitude};${to.longitude},${to.latitude}'
-      '?overview=full&geometries=geojson&steps=true',
-    );
-    final body = await _get(uri);
-    if (body != null) {
-      try {
-        final j = jsonDecode(body) as Map<String, dynamic>;
-        final routes = j['routes'] as List?;
-        if (routes != null && routes.isNotEmpty) {
-          final r = routes.first as Map<String, dynamic>;
-          final coords =
-              (r['geometry']?['coordinates'] as List?) ?? const [];
-          final pts = <LatLng>[];
-          for (final c in coords) {
-            if (c is List && c.length >= 2) {
-              pts.add(LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()));
-            }
-          }
-          final steps = <RouteStep>[];
-          for (final leg in (r['legs'] as List? ?? const [])) {
-            for (final s in (leg['steps'] as List? ?? const [])) {
-              final man = s['maneuver'] as Map<String, dynamic>? ?? const {};
-              final loc = man['location'] as List? ?? const [];
-              steps.add(RouteStep(
-                instruction: _italian(
-                    '${man['type'] ?? ''}', '${man['modifier'] ?? ''}'),
-                streetName: '${s['name'] ?? ''}'.trim(),
-                distanceM: ((s['distance'] as num?) ?? 0).toDouble(),
-                maneuver: '${man['type'] ?? ''}',
-                modifier: '${man['modifier'] ?? ''}',
-                at: loc.length >= 2
-                    ? LatLng((loc[1] as num).toDouble(), (loc[0] as num).toDouble())
-                    : to,
-              ));
-            }
-          }
-          if (pts.length >= 2) {
-            return RouteResult(
-              points: pts,
-              steps: steps,
-              distanceM: ((r['distance'] as num?) ?? 0).toDouble(),
-              durationS: ((r['duration'] as num?) ?? 0).toDouble(),
-            );
-          }
-        }
-      } catch (e) {
-        debugPrint('GeocodingService: rotta non interpretabile ($e)');
-      }
-    }
-
-    // Nessuna rotta: linea retta, dichiarata come tale.
-    const d = Distance();
-    final meters = d(from, to).toDouble();
-    return RouteResult(
-      points: [from, to],
-      steps: [
-        RouteStep(
-          instruction: 'Direzione destinazione',
-          streetName: '',
-          distanceM: meters,
-          maneuver: 'depart',
-          modifier: 'straight',
-          at: from,
-        ),
-      ],
-      distanceM: meters,
-      // stima grossolana a 45 km/h di media, giusto per avere un ETA
-      durationS: meters / (45 / 3.6),
-      straightLineFallback: true,
-    );
-  }
-
   /// Rotta da [a] verso [b], in gradi da nord.
   ///
   /// Finche' la centralina non manda la bussola, la direzione in cui punta la
@@ -229,56 +154,28 @@ class GeocodingService {
     return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
   }
 
-  /// Traduce la manovra OSRM in una frase leggibile a colpo d'occhio.
-  static String _italian(String type, String modifier) {
-    String dir() {
-      switch (modifier) {
-        case 'left':
-          return 'a sinistra';
-        case 'right':
-          return 'a destra';
-        case 'slight left':
-          return 'leggermente a sinistra';
-        case 'slight right':
-          return 'leggermente a destra';
-        case 'sharp left':
-          return 'stretta a sinistra';
-        case 'sharp right':
-          return 'stretta a destra';
-        case 'uturn':
-          return 'inversione a U';
-        default:
-          return 'dritto';
-      }
-    }
-
-    switch (type) {
-      case 'depart':
-        return 'Parti';
-      case 'arrive':
-        return 'Sei arrivato';
-      case 'turn':
-        return 'Gira ${dir()}';
-      case 'new name':
-      case 'continue':
-        return 'Prosegui ${dir()}';
-      case 'merge':
-        return 'Immettiti ${dir()}';
-      case 'on ramp':
-        return 'Prendi la rampa ${dir()}';
-      case 'off ramp':
-        return 'Esci ${dir()}';
-      case 'fork':
-        return 'Al bivio tieni ${dir()}';
-      case 'end of road':
-        return 'A fine strada gira ${dir()}';
-      case 'roundabout':
-      case 'rotary':
-        return 'Alla rotonda ${dir()}';
-      case 'roundabout turn':
-        return 'Alla rotonda gira ${dir()}';
-      default:
-        return 'Prosegui ${dir()}';
-    }
+  /// La linea retta verso la destinazione: non è un percorso stradale, e lo
+  /// dichiara. È quello che resta quando il calcolo del percorso non risponde,
+  /// e in moto meglio una direzione che niente.
+  RouteResult straightLine(LatLng from, LatLng to) {
+    const d = Distance();
+    final meters = d(from, to).toDouble();
+    return RouteResult(
+      points: [from, to],
+      steps: [
+        RouteStep(
+          instruction: 'Direzione destinazione',
+          streetName: '',
+          distanceM: meters,
+          maneuver: '0',
+          modifier: '',
+          at: from,
+        ),
+      ],
+      distanceM: meters,
+      // stima grossolana a 45 km/h di media, giusto per avere un ETA
+      durationS: meters / (45 / 3.6),
+      straightLineFallback: true,
+    );
   }
 }
