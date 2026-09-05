@@ -122,6 +122,18 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   /// scelta di troppo.
   static const MapStyle _style = MapStyle.chiara;
 
+  // ── VISTA LIBERA ──────────────────────────────────────────────────────────
+  // Col dito si sposta la mappa per guardare cosa c'e' piu' avanti. Poi torna
+  // da sola sulla moto: in marcia non puoi ricordarti di rimetterla a posto, e
+  // una mappa rimasta a spasso e' peggio di nessuna mappa.
+  static const Duration _recenterAfter = Duration(seconds: 3);
+
+  bool _freeLook = false;
+  Timer? _recenterTimer;
+  late final AnimationController _recenterAnim;
+  LatLng? _recenterFrom;
+  double? _recenterFromRot;
+
   // ── AUTOVELOX ─────────────────────────────────────────────────────────────
   // Le posizioni stanno in cache sul telefono (vedi SpeedCameraService):
   // l'avviso funziona in galleria e senza campo, che e' quando serve.
@@ -420,7 +432,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             width: veloce ? 1.5 : 1,
           ),
         ),
-        child: Column(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _routeThumb(o),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -522,10 +540,126 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
               ),
             ],
           ],
+                )),
+          ],
         ),
       ),
     );
   }
+
+  /// La miniatura del percorso: tutto il tragitto visto dall'alto, in un
+  /// francobollo.
+  ///
+  /// Serve a capire **dove** passa, che i numeri non dicono: due percorsi da
+  /// due ore possono girare da due parti opposte della montagna. La mappa e'
+  /// bloccata e senza etichette utili a quella scala — quello che conta e' la
+  /// forma della linea.
+  Widget _routeThumb(RouteOption o) {
+    final pts = o.route.points;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(9),
+      child: SizedBox(
+        width: 108,
+        height: 78,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            FlutterMap(
+              options: MapOptions(
+                // Inquadra tutto il percorso da sola, con un margine perche'
+                // la linea non tocchi i bordi.
+                initialCameraFit: pts.length >= 2
+                    ? CameraFit.bounds(
+                        bounds: LatLngBounds.fromPoints(pts),
+                        padding: const EdgeInsets.all(10),
+                      )
+                    : null,
+                initialCenter: pts.isEmpty ? _myLocation : pts.first,
+                initialZoom: 9,
+                backgroundColor: _style.hazeColor,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.none,
+                ),
+              ),
+              children: [
+                _tileLayer(_style.urlTemplate),
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: pts,
+                      color: const Color(0xFF1565D8),
+                      strokeWidth: 3.0,
+                      borderColor: Colors.white,
+                      borderStrokeWidth: 1.2,
+                    ),
+                  ],
+                ),
+                MarkerLayer(
+                  markers: [
+                    if (pts.isNotEmpty)
+                      Marker(
+                        point: pts.first,
+                        width: 10,
+                        height: 10,
+                        child: _puntino(Colors.white, const Color(0xFF1565D8)),
+                      ),
+                    if (pts.length > 1)
+                      Marker(
+                        point: pts.last,
+                        width: 10,
+                        height: 10,
+                        child:
+                            _puntino(AppTheme.alertRed, Colors.white),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            // Un velo leggerissimo: la carta chiara a questa taglia e'
+            // accecante accanto al nero della scheda.
+            IgnorePointer(
+              child: Container(color: Colors.black.withOpacity(0.12)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Dove cade sullo schermo la moto.
+  ///
+  /// Finche' la mappa insegue, e' sempre lo stesso punto e si potrebbe
+  /// scriverlo fisso. Ma appena la sposti col dito la moto deve restare
+  /// **attaccata alla sua strada** e scorrere via insieme all'asfalto: quindi
+  /// si proietta la sua coordinata come fa la mappa, e poi si passa la stessa
+  /// matrice della scena. Un solo percorso di calcolo per tutti e due i casi:
+  /// se fossero due, prima o poi si scollerebbero.
+  Offset _riderOnScreen(Size size) {
+    final fisso = Offset(size.width / 2, size.height * (0.5 + _cameraShift));
+    try {
+      final camera = _mapController.camera;
+      final pt = camera.latLngToScreenPoint(_myLocation);
+      // Dal sistema del widget-mappa (grande PW x PH) a quello centrato
+      // sull'origine della rotazione, che e' il centro dello schermo.
+      final dx = pt.x - size.width * _planeWidthFactor / 2;
+      final dy = pt.y - size.height * _planeHeightFactor / 2;
+      final proiettato =
+          MatrixUtils.transformPoint(_groundMatrix(size), Offset(dx, dy));
+      return Offset(
+          size.width / 2 + proiettato.dx, size.height / 2 + proiettato.dy);
+    } catch (_) {
+      // La mappa non e' ancora stata disegnata: non ha una camera.
+      return fisso;
+    }
+  }
+
+  Widget _puntino(Color dentro, Color bordo) => Container(
+        decoration: BoxDecoration(
+          color: dentro,
+          shape: BoxShape.circle,
+          border: Border.all(color: bordo, width: 1.6),
+        ),
+      );
 
   Widget _routeStat(IconData icona, String testo, Color colore) => Row(
         mainAxisSize: MainAxisSize.min,
@@ -625,8 +759,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       // La mappa ruota con te: in una vista dalla sella, in alto c'e'
       // sempre la direzione in cui stai andando. Senza questa rotazione la
       // moto punta verso l'alto ma la strada no, e le due cose litigano.
-      _mapController.moveAndRotate(
-          _myLocation, _mapController.camera.zoom, -_heading);
+      //
+      // Mentre stai guardando in giro col dito pero' non si tocca: sarebbe
+      // come farsi strappare la mappa di mano ogni mezzo secondo.
+      if (!_freeLook) {
+        _mapController.moveAndRotate(
+            _myLocation, _mapController.camera.zoom, -_heading);
+      }
       _checkSpeedCameras();
     });
   }
@@ -764,6 +903,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
 
+    // Mezzo secondo per tornare sulla moto. Uno scatto secco disorienta:
+    // quando la mappa si rimette a posto devi capire da dove sei tornato.
+    _recenterAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..addListener(_stepRecenter);
+
     // Simula telemetria attiva in marcia (solo cambio marcia)
     _telemetryTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (!mounted) return;
@@ -856,6 +1002,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     _roarStopTimer?.cancel();
     _rotationController.dispose();
     _shiftPulse.dispose();
+    _recenterAnim.dispose();
+    _recenterTimer?.cancel();
     _waveController.dispose();
     _audioPlayer.dispose();
     _tts.stop();
@@ -1034,10 +1182,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     return ClipRect(
       child: Transform(
         alignment: Alignment.center,
-        transform: Matrix4.identity()
-          ..setEntry(3, 2, _perspectiveDepth)
-          ..translate(0.0, size.height * _cameraShift)
-          ..rotateX(-_pitch),
+        transform: _groundMatrix(size),
         child: OverflowBox(
           minWidth: size.width * _planeWidthFactor,
           maxWidth: size.width * _planeWidthFactor,
@@ -1089,9 +1234,16 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         maxZoom: 19.0,
         backgroundColor: _style.hazeColor,
         interactionOptions: const InteractionOptions(
-          // Mappa agganciata alla moto, come i navigatori in navigazione.
-          flags: InteractiveFlag.none,
+          // Trascinamento e pizzico si', rotazione no: l'orientamento della
+          // mappa lo decide la rotta di marcia, non il pollice. Girarla a
+          // mano vorrebbe dire perdere il "in alto c'e' dove stai andando",
+          // che e' tutto il senso di questa vista.
+          flags: InteractiveFlag.drag |
+              InteractiveFlag.pinchZoom |
+              InteractiveFlag.doubleTapZoom |
+              InteractiveFlag.flingAnimation,
         ),
+        onMapEvent: _onMapEvent,
       ),
       children: [
         // La carta OSM ha gia' dentro i nomi delle vie: non serve un
@@ -1168,14 +1320,92 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     );
   }
 
+  /// Ogni movimento della mappa passa di qui.
+  ///
+  /// Si distingue chi l'ha mosso: se e' stato il dito si entra in vista libera
+  /// e parte il conto alla rovescia per il rientro; se e' stato il codice
+  /// (l'inseguimento della moto, o l'animazione di rientro) non si tocca
+  /// niente, o si rientrerebbe all'infinito.
+  void _onMapEvent(MapEvent e) {
+    const dita = {
+      MapEventSource.dragStart,
+      MapEventSource.onDrag,
+      MapEventSource.dragEnd,
+      MapEventSource.multiFingerGestureStart,
+      MapEventSource.onMultiFinger,
+      MapEventSource.multiFingerEnd,
+      MapEventSource.doubleTap,
+      MapEventSource.doubleTapHold,
+      MapEventSource.flingAnimationController,
+      MapEventSource.scrollWheel,
+    };
+
+    if (dita.contains(e.source)) {
+      _recenterAnim.stop();
+      _recenterTimer?.cancel();
+      _recenterTimer = Timer(_recenterAfter, _recenterToRider);
+      if (!_freeLook) setState(() => _freeLook = true);
+      return;
+    }
+
+    // Anche senza dito la moto va riposizionata: la mappa si e' mossa e lei
+    // sta appesa a una coordinata, non a un punto dello schermo.
+    if (mounted) setState(() {});
+  }
+
+  /// Riporta la mappa sulla moto, con mezzo secondo di animazione.
+  void _recenterToRider() {
+    if (!mounted) return;
+    try {
+      _recenterFrom = _mapController.camera.center;
+      _recenterFromRot = _mapController.camera.rotation;
+    } catch (_) {
+      _recenterFrom = null;
+    }
+    _recenterAnim.forward(from: 0);
+  }
+
+  void _stepRecenter() {
+    final da = _recenterFrom;
+    final daRot = _recenterFromRot;
+    if (da == null || daRot == null) return;
+
+    final t = Curves.easeInOut.transform(_recenterAnim.value);
+
+    // La rotazione si interpola per la via corta, o passando per il nord la
+    // mappa fa un giro completo su se stessa.
+    var deltaRot = ((-_heading) - daRot + 540) % 360 - 180;
+
+    _mapController.moveAndRotate(
+      LatLng(
+        da.latitude + (_myLocation.latitude - da.latitude) * t,
+        da.longitude + (_myLocation.longitude - da.longitude) * t,
+      ),
+      _mapController.camera.zoom,
+      daRot + deltaRot * t,
+    );
+
+    if (_recenterAnim.isCompleted && _freeLook) {
+      setState(() => _freeLook = false);
+    }
+  }
+
+  /// La matrice della scena. Serve a due cose che devono restare d'accordo:
+  /// deformare la mappa, e sapere dove finisce sullo schermo un punto che ci
+  /// sta sopra.
+  Matrix4 _groundMatrix(Size size) => Matrix4.identity()
+    ..setEntry(3, 2, _perspectiveDepth)
+    ..translate(0.0, size.height * _cameraShift)
+    ..rotateX(-_pitch);
+
   /// La moto, ancorata dove il centro della mappa finisce sullo schermo.
   Widget _buildRider(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final y = size.height * (0.5 + _cameraShift);
+    final posizione = _riderOnScreen(size);
     return Positioned(
-      left: 0,
-      right: 0,
-      top: y - 66,
+      left: posizione.dx - 66,
+      top: posizione.dy - 66,
+      width: 132,
       height: 132,
       child: IgnorePointer(
         child: Center(
@@ -1930,6 +2160,50 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                         ],
                       ],
                     ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── VISTA LIBERA ────────────────────────────────────────────
+          // Compare solo mentre stai guardando in giro col dito. Serve a
+          // spiegare perche' la mappa non ti sta piu' seguendo — senza,
+          // sembrerebbe che si sia impiantata — e a tornare subito senza
+          // aspettare i tre secondi.
+          if (_freeLook)
+            Positioned(
+              left: 12,
+              bottom: 86,
+              child: GestureDetector(
+                onTap: () {
+                  _recenterTimer?.cancel();
+                  _recenterToRider();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppTheme.activeCyan.withOpacity(0.55)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.my_location,
+                          size: 13, color: AppTheme.activeCyan),
+                      const SizedBox(width: 7),
+                      Text(
+                        'VISTA LIBERA · TOCCA PER TORNARE',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
