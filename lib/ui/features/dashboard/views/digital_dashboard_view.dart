@@ -66,7 +66,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   String _internalEta = "12:00";
   String _internalRemainingDist = "0.0 km";
   String _selectedDestinationName = "";
-  double _mapRotation = 15.0;
 
   // Percorso calcolato e passo corrente lungo di esso
   RouteResult? _route;
@@ -116,8 +115,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     return (projected + size.height / 2).clamp(0.0, size.height);
   }
 
-  bool _perspectiveOn = true;
-  int _styleIndex = 0;
+  /// Una sola vista, satellite e inclinata. I due pulsanti che ciclavano gli
+  /// stili e spegnevano il 3D sono spariti: in moto una scelta da fare e' una
+  /// scelta di troppo.
+  static const MapStyle _style = MapStyle.satellite;
 
   // ── AUTOVELOX ─────────────────────────────────────────────────────────────
   // Le posizioni stanno in cache sul telefono (vedi SpeedCameraService):
@@ -129,17 +130,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   /// la carreggiata opposta. Finche' la centralina non c'e', e' quella
   /// calcolata lungo il percorso.
   double _heading = 15.0;
-  MapStyle get _style => MapStyle.all[_styleIndex];
-
-  void _cycleStyle() {
-    HapticFeedback.selectionClick();
-    setState(() => _styleIndex = (_styleIndex + 1) % MapStyle.all.length);
-  }
-
-  void _togglePerspective() {
-    HapticFeedback.selectionClick();
-    setState(() => _perspectiveOn = !_perspectiveOn);
-  }
 
   // ── RICERCA DESTINAZIONE ──────────────────────────────────────────────────
   Future<void> _openDestinationSearch() async {
@@ -325,9 +315,11 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         _internalRouteIndex++;
         _myLocation = route.points[_internalRouteIndex];
 
-        // Rotta vera lungo il percorso: serve agli autovelox e, quando
-        // arrivera' il GPS della centralina, alla rotazione della mappa.
-        _heading = GeocodingService.bearing(prev, _myLocation);
+        // Rotta vera lungo il percorso. Filtrata: la direzione fra due
+        // punti consecutivi salta a ogni curva stretta, e una mappa che
+        // scatta e' peggio di una mappa ferma.
+        _heading = _smoothHeading(_heading,
+            GeocodingService.bearing(prev, _myLocation));
 
         // distanza residua lungo i punti che restano
         const d = Distance();
@@ -350,7 +342,11 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         }
       });
 
-      _mapController.move(_myLocation, _mapController.camera.zoom);
+      // La mappa ruota con te: in una vista dalla sella, in alto c'e'
+      // sempre la direzione in cui stai andando. Senza questa rotazione la
+      // moto punta verso l'alto ma la strada no, e le due cose litigano.
+      _mapController.moveAndRotate(
+          _myLocation, _mapController.camera.zoom, -_heading);
       _checkSpeedCameras();
     });
   }
@@ -364,6 +360,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       _routePoints = [];
       _selectedDestinationName = '';
     });
+  }
+
+  /// Media fra la rotta di prima e quella nuova, presa per la via corta.
+  ///
+  /// Senza il passaggio da -179 a +179 gradi la mappa farebbe un giro
+  /// completo su se stessa ogni volta che passi per il nord.
+  static double _smoothHeading(double vecchia, double nuova) {
+    var delta = (nuova - vecchia + 540) % 360 - 180;
+    return (vecchia + delta * 0.35 + 360) % 360;
   }
 
   static String _fmtDistance(double m) =>
@@ -770,8 +775,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   // Verificato con vector_math prima di scriverlo: con +pitch il lontano
   // ingrandisce invece di rimpicciolire.
   Widget _buildGround(BuildContext context) {
-    if (!_perspectiveOn) return _buildMap();
-
     final size = MediaQuery.of(context).size;
     return ClipRect(
       child: Transform(
@@ -791,9 +794,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     );
   }
 
-  /// Un livello di tile, con l'eventuale filtro colore dello stile.
-  Widget _tileLayer(String url, ColorFilter? filter) {
-    final layer = TileLayer(
+  /// Un livello di tile.
+  Widget _tileLayer(String url) {
+    return TileLayer(
       urlTemplate: url,
       userAgentPackageName: 'com.example.monster_sync_app',
       // Con la mappa inclinata servono tile ben oltre il bordo visibile: il
@@ -804,16 +807,12 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       panBuffer: 0,
       keepBuffer: 3,
     );
-    return filter == null
-        ? layer
-        : ColorFiltered(colorFilter: filter, child: layer);
   }
 
   /// Raddrizza un marcatore dentro la scena inclinata: resta in piedi sul suo
   /// punto della strada, come un cartello, invece di essere spalmato
   /// sull'asfalto insieme a tutto il resto.
   Widget _billboard(Widget child) {
-    if (!_perspectiveOn) return child;
     return Transform(
       alignment: Alignment.bottomCenter,
       transform: Matrix4.identity()..rotateX(_pitch),
@@ -830,7 +829,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         // Zoom alto: in navigazione conta la strada sotto le ruote, non la
         // provincia. La prospettiva ingrandisce ancora il primo piano.
         initialZoom: 18.0,
-        initialRotation: _mapRotation,
+        initialRotation: -_heading,
         minZoom: 14.0,
         maxZoom: 19.0,
         backgroundColor: const Color(0xFF0A0E14),
@@ -840,11 +839,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         ),
       ),
       children: [
-        _tileLayer(style.urlTemplate, style.filter),
+        _tileLayer(style.urlTemplate),
         // Il satellite da solo non ha i nomi delle strade: glieli rimette
         // sopra questo livello trasparente.
-        if (style.overlayUrlTemplate != null)
-          _tileLayer(style.overlayUrlTemplate!, null),
+        _tileLayer(style.overlayUrlTemplate),
 
         if (_navigationActive)
           PolylineLayer(
@@ -916,44 +914,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     );
   }
 
-  Widget _viewButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppTheme.activeCyan),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.orbitron(
-                fontSize: 7.5,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// La moto, ancorata dove il centro della mappa finisce sullo schermo.
   Widget _buildRider(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final y = size.height * (0.5 + (_perspectiveOn ? _cameraShift : 0.0));
+    final y = size.height * (0.5 + _cameraShift);
     return Positioned(
       left: 0,
       right: 0,
@@ -967,7 +931,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             child: Stack(
               alignment: Alignment.center,
               children: [
-                _RippleRing(),
+                // L'onda sta per terra, non in aria: schiacciata di cos(62°)
+                // diventa l'ellisse che un cerchio disegnato sull'asfalto fa
+                // vedere da questa angolazione.
+                Transform.scale(
+                  scaleY: 0.47,
+                  child: _RippleRing(),
+                ),
                 SizedBox(
                   width: 118,
                   height: 118,
@@ -977,10 +947,22 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     cameraControls: false,
                     disableZoom: true,
                     autoRotate: false,
-                    // Da dietro e dall'alto, l'inquadratura che hai stando
-                    // sopra la moto.
-                    cameraOrbit: '0deg 22deg 65%',
-                    shadowIntensity: 0.0,
+                    // **L'angolo della moto deve essere quello della strada.**
+                    // Era a 22 gradi: la moto vista quasi a piombo, appoggiata
+                    // su un asfalto inclinato di 62 — due punti di vista
+                    // diversi nella stessa immagine, ed e' quello che la faceva
+                    // sembrare incollata sopra invece che dentro la scena.
+                    // Il secondo valore di cameraOrbit e' l'angolo dalla
+                    // verticale: messo a 62 come l'inclinazione del piano, la
+                    // moto e la strada si guardano dallo stesso punto.
+                    // Piu' lontana del prima (era 65%): vista di taglio la
+                    // moto e' lunga, e a distanza ravvicinata il modello
+                    // finiva tagliato ai bordi del riquadro.
+                    cameraOrbit: '0deg 62deg 105%',
+                    // L'ombra la appoggia per terra. Morbida, o sembra
+                    // ritagliata col cutter.
+                    shadowIntensity: 0.9,
+                    shadowSoftness: 1.0,
                     backgroundColor: Colors.transparent,
                   ),
                 ),
@@ -1033,7 +1015,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           IgnorePointer(
             child: Builder(builder: (ctx) {
               final size = MediaQuery.of(ctx).size;
-              final edge = _perspectiveOn ? _mapTopEdge(size) : 0.0;
+              final edge = _mapTopEdge(size);
               if (edge <= 1) return const SizedBox.shrink();
               return Align(
                 alignment: Alignment.topCenter,
@@ -1276,32 +1258,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // ── COMANDI DELLA VISTA ─────────────────────────────────────
-          // Sotto al carburante, lontani dal centro dello schermo che e' dove
-          // guardi la strada.
-          Positioned(
-            top: 148,
-            left: 12,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _viewButton(
-                  icon: _style.icon,
-                  label: _style.name,
-                  onTap: _cycleStyle,
-                ),
-                const SizedBox(height: 8),
-                _viewButton(
-                  icon: _perspectiveOn
-                      ? Icons.threed_rotation
-                      : Icons.crop_square,
-                  label: _perspectiveOn ? '3D' : '2D',
-                  onTap: _togglePerspective,
-                ),
-              ],
             ),
           ),
 
