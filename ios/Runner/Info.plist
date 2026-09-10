@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>MonsterSync richiede la posizione per il GPS del cruscotto, la mappa e il meteo lungo il percorso.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>MonsterSync richiede il Bluetooth per connettersi alla telemetria della moto.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
