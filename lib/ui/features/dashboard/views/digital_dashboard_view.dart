@@ -1,16 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as ml;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:monster_sync_app/ui/core/theme.dart';
-import 'package:monster_sync_app/ui/core/map_styles.dart';
 import 'package:monster_sync_app/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:monster_sync_app/data/services/weather_service.dart';
 import 'package:monster_sync_app/data/services/navigation_service.dart';
@@ -19,6 +20,7 @@ import 'package:monster_sync_app/data/services/speed_camera_service.dart';
 import 'package:monster_sync_app/data/services/gear_advisor.dart';
 import 'package:monster_sync_app/data/services/route_planner.dart';
 import 'package:monster_sync_app/data/services/roadworks_service.dart';
+
 
 class DigitalDashboardView extends StatefulWidget {
   final DashboardViewModel viewModel;
@@ -33,7 +35,10 @@ class DigitalDashboardView extends StatefulWidget {
 }
 
 class _DigitalDashboardViewState extends State<DigitalDashboardView> with TickerProviderStateMixin {
-  late final MapController _mapController;
+  // MapLibre GL controller — set in onMapCreated callback
+  ml.MapLibreMapController? _mlController;
+  bool _mapStyleLoaded = false;
+
   late final FlutterTts _tts;
   late final stt.SpeechToText _speech;
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -74,63 +79,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   int _stepIndex = 0;
   bool _routeLoading = false;
 
-  // ── VISTA IN PROSPETTIVA ──────────────────────────────────────────────────
-  // flutter_map disegna sempre a piombo: non sa cosa sia l'inclinazione della
-  // camera. La si ottiene deformando il widget con una matrice di prospettiva,
-  // che e' poi quello che fanno anche i navigatori veri.
-  //
-  // Questi numeri non sono a occhio: prima di scriverli qui la scena e' stata
-  // montata in CSS con le stesse tile e le stesse proporzioni dello schermo.
-  //  - 54 gradi e fuoco a 625 px mandano la linea d'orizzonte 454 px sopra il
-  //    centro, cioe' fuori dal riquadro: la mappa riempie tutto e non serve
-  //    disegnare un cielo ne' resta un bordo scoperto;
-  //  - con quella inclinazione il fondo si comprime, quindi il widget della
-  //    mappa deve essere largo il doppio e alto 3,6 volte lo schermo, o in
-  //    alto restano strisce vuote.
-  static const double _pitch = 1.257;               // 72 gradi in radianti
-  static const double _perspectiveDepth = 1 / 625.0;
-  /// Quanto la scena scende rispetto al centro dello schermo — cioe' dove
-  /// finisce la moto.
-  ///
-  /// Ridotto per mantenere la moto ben visibile con il nuovo pitch più alto.
-  static const double _cameraShift = 0.14;
-  static const double _planeWidthFactor = 1.8;
-  static const double _planeHeightFactor = 3.0;
-
-  /// Dove finisce, sullo schermo, il bordo alto della mappa — misurato in
-  /// pixel dal bordo alto del riquadro.
-  ///
-  /// A 62 gradi la compressione prospettica e' cosi' forte che per riempire
-  /// anche l'ultima striscia in alto servirebbe un piano alto quindici volte
-  /// lo schermo: centocinquanta tile da scaricare per un dito di immagine.
-  /// Si ferma prima, e sopra il bordo va una **foschia**, che e' anche quello
-  /// che vedresti davvero guardando lontano. Il calcolo e' lo stesso della
-  /// matrice, quindi la fascia si adatta da sola a qualunque schermo.
-  double _mapTopEdge(Size size) {
-    final yTop = -size.height * _planeHeightFactor / 2;
-    final w = 1 - _perspectiveDepth * math.sin(_pitch) * yTop;
-    final projected =
-        (math.cos(_pitch) * yTop + size.height * _cameraShift) / w;
-    return (projected + size.height / 2).clamp(0.0, size.height);
-  }
-
-  /// Una sola vista, satellite e inclinata. I due pulsanti che ciclavano gli
-  /// stili e spegnevano il 3D sono spariti: in moto una scelta da fare e' una
-  /// scelta di troppo.
-  static const MapStyle _style = MapStyle.scura;
-
-  // ── VISTA LIBERA ──────────────────────────────────────────────────────────
-  // Col dito si sposta la mappa per guardare cosa c'e' piu' avanti. Poi torna
-  // da sola sulla moto: in marcia non puoi ricordarti di rimetterla a posto, e
-  // una mappa rimasta a spasso e' peggio di nessuna mappa.
-  static const Duration _recenterAfter = Duration(seconds: 3);
-
-  bool _freeLook = false;
-  Timer? _recenterTimer;
-  late final AnimationController _recenterAnim;
-  LatLng? _recenterFrom;
-  double? _recenterFromRot;
-
   // ── AUTOVELOX ─────────────────────────────────────────────────────────────
   // Le posizioni stanno in cache sul telefono (vedi SpeedCameraService):
   // l'avviso funziona in galleria e senza campo, che e' quando serve.
@@ -141,6 +89,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   /// la carreggiata opposta. Finche' la centralina non c'e', e' quella
   /// calcolata lungo il percorso.
   double _heading = 15.0;
+
 
   // ── RICERCA DESTINAZIONE ──────────────────────────────────────────────────
   Future<void> _openDestinationSearch() async {
@@ -598,13 +547,16 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                     : null,
                 initialCenter: pts.isEmpty ? _myLocation : pts.first,
                 initialZoom: 9,
-                backgroundColor: _style.hazeColor,
+                backgroundColor: const Color(0xFF1a1a2e),
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.none,
                 ),
               ),
               children: [
-                _tileLayer(_style.urlTemplate),
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.lorenzozero.monster_sync_app',
+                ),
                 PolylineLayer(
                   polylines: [
                     Polyline(
@@ -648,32 +600,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     );
   }
 
-  /// Dove cade sullo schermo la moto.
-  ///
-  /// Finche' la mappa insegue, e' sempre lo stesso punto e si potrebbe
-  /// scriverlo fisso. Ma appena la sposti col dito la moto deve restare
-  /// **attaccata alla sua strada** e scorrere via insieme all'asfalto: quindi
-  /// si proietta la sua coordinata come fa la mappa, e poi si passa la stessa
-  /// matrice della scena. Un solo percorso di calcolo per tutti e due i casi:
-  /// se fossero due, prima o poi si scollerebbero.
-  Offset _riderOnScreen(Size size) {
-    final fisso = Offset(size.width / 2, size.height * (0.5 + _cameraShift));
-    try {
-      final camera = _mapController.camera;
-      final pt = camera.latLngToScreenPoint(_myLocation);
-      // Dal sistema del widget-mappa (grande PW x PH) a quello centrato
-      // sull'origine della rotazione, che e' il centro dello schermo.
-      final dx = pt.x - size.width * _planeWidthFactor / 2;
-      final dy = pt.y - size.height * _planeHeightFactor / 2;
-      final proiettato =
-          MatrixUtils.transformPoint(_groundMatrix(size), Offset(dx, dy));
-      return Offset(
-          size.width / 2 + proiettato.dx, size.height / 2 + proiettato.dy);
-    } catch (_) {
-      // La mappa non e' ancora stata disegnata: non ha una camera.
-      return fisso;
-    }
-  }
 
   Widget _puntino(Color dentro, Color bordo) => Container(
         decoration: BoxDecoration(
@@ -714,7 +640,31 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           r.steps.isNotEmpty ? _fmtDistance(r.steps.first.distanceM) : '';
     });
 
-    _mapController.move(_myLocation, 16.0);
+    _mlController?.animateCamera(ml.CameraUpdate.newCameraPosition(
+      ml.CameraPosition(
+        target: ml.LatLng(_myLocation.latitude, _myLocation.longitude),
+        zoom: 17.5,
+        bearing: -_heading,
+        tilt: 55.0,
+      ),
+    ));
+    if (_mapStyleLoaded) {
+      final geojson = jsonEncode({
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'LineString',
+              'coordinates':
+                  r.points.map((p) => [p.longitude, p.latitude]).toList(),
+            }
+          }
+        ]
+      });
+      _mlController?.setGeoJsonSource(
+          'route', jsonDecode(geojson) as Map<String, dynamic>);
+    }
 
     await _tts.speak(r.straightLineFallback
         ? 'Percorso non disponibile senza rete. Traccio la direzione verso ${dest.name}.'
@@ -778,16 +728,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         }
       });
 
-      // La mappa ruota con te: in una vista dalla sella, in alto c'e'
-      // sempre la direzione in cui stai andando. Senza questa rotazione la
-      // moto punta verso l'alto ma la strada no, e le due cose litigano.
-      //
-      // Mentre stai guardando in giro col dito pero' non si tocca: sarebbe
-      // come farsi strappare la mappa di mano ogni mezzo secondo.
-      if (!_freeLook) {
-        _mapController.moveAndRotate(
-            _myLocation, _mapController.camera.zoom, -_heading);
-      }
+      // La mappa segue la moto: ruota nella direzione di marcia.
+      _mlController?.animateCamera(ml.CameraUpdate.newCameraPosition(
+        ml.CameraPosition(
+          target: ml.LatLng(_myLocation.latitude, _myLocation.longitude),
+          zoom: 17.5,
+          bearing: -_heading,
+          tilt: 55.0,
+        ),
+      ));
       _checkSpeedCameras();
     });
   }
@@ -803,6 +752,9 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       _weatherDest = null;
       _destWeatherName = '';
     });
+    // Svuota la polyline sul MapLibre
+    _mlController?.setGeoJsonSource('route',
+        const <String, dynamic>{'type': 'FeatureCollection', 'features': []});
   }
 
   /// Media fra la rotta di prima e quella nuova, presa per la via corta.
@@ -899,7 +851,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
 
     // Forza la modalità Landscape e nascondi le barre di sistema
     SystemChrome.setPreferredOrientations([
@@ -931,13 +882,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-
-    // Mezzo secondo per tornare sulla moto. Uno scatto secco disorienta:
-    // quando la mappa si rimette a posto devi capire da dove sei tornato.
-    _recenterAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..addListener(_stepRecenter);
 
     // Simula telemetria attiva in marcia (solo cambio marcia)
     _telemetryTimer = Timer.periodic(const Duration(milliseconds: 800), (timer) {
@@ -1031,8 +975,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     _roarStopTimer?.cancel();
     _rotationController.dispose();
     _shiftPulse.dispose();
-    _recenterAnim.dispose();
-    _recenterTimer?.cancel();
     _waveController.dispose();
     _audioPlayer.dispose();
     _tts.stop();
@@ -1220,241 +1162,74 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     }
   }
 
-  // ── LA MAPPA INCLINATA ───────────────────────────────────────
+  // ── MAPLIBRE GL — MAPPA NATIVA 3D ───────────────────────────────────────
   //
-  // Il segno della rotazione e' negativo, e non e' un dettaglio: in CSS un
-  // rotateX positivo allontana il bordo alto, in Flutter — dove l'asse y punta
-  // in basso — succede l'opposto e la mappa si ribalterebbe verso di te.
-  // Verificato con vector_math prima di scriverlo: con +pitch il lontano
-  // ingrandisce invece di rimpicciolire.
-  Widget _buildGround(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    return ClipRect(
-      child: Transform(
-        alignment: Alignment.center,
-        transform: _groundMatrix(size),
-        child: OverflowBox(
-          minWidth: size.width * _planeWidthFactor,
-          maxWidth: size.width * _planeWidthFactor,
-          minHeight: size.height * _planeHeightFactor,
-          maxHeight: size.height * _planeHeightFactor,
-          child: _buildMap(),
+  // Zero API key. Tema scuro OpenFreeMap Fiord.
+  // La camera segue la moto con bearing e pitch nativi — niente matrix4.
+
+  void _onStyleLoaded() async {
+    if (!mounted) return;
+    setState(() => _mapStyleLoaded = true);
+    // Edifici 3D
+    try {
+      await _mlController?.addLayer(
+        'openmaptiles',
+        '3d-buildings',
+        const ml.FillExtrusionLayerProperties(
+          fillExtrusionColor: '#3a3f5c',
+          fillExtrusionHeight: ['get', 'render_height'],
+          fillExtrusionBase: ['get', 'render_min_height'],
+          fillExtrusionOpacity: 0.85,
         ),
-      ),
-    );
-  }
-
-  /// Un livello di tile.
-  Widget _tileLayer(String url) {
-    return TileLayer(
-      urlTemplate: url,
-      userAgentPackageName: 'com.example.monster_sync_app',
-      // Con la mappa inclinata servono tile ben oltre il bordo visibile: il
-      // fondo della scena e' molto piu' largo di quello che si vede.
-      // Il piano e' gia' molto piu' grande dello schermo: un buffer di
-      // preload sopra a quello raddoppierebbe le tile da scaricare per
-      // niente.
-      panBuffer: 0,
-      keepBuffer: 3,
-    );
-  }
-
-  /// Raddrizza un marcatore dentro la scena inclinata: resta in piedi sul suo
-  /// punto della strada, come un cartello, invece di essere spalmato
-  /// sull'asfalto insieme a tutto il resto.
-  Widget _billboard(Widget child) {
-    return Transform(
-      alignment: Alignment.bottomCenter,
-      transform: Matrix4.identity()..rotateX(_pitch),
-      child: child,
-    );
+        sourceLayer: 'building',
+      );
+    } catch (e) {
+      debugPrint('3D buildings layer error: $e');
+    }
+    // Route GeoJSON source + line layer
+    try {
+      await _mlController?.addGeoJsonSource('route',
+          const <String, dynamic>{'type': 'FeatureCollection', 'features': []});
+      await _mlController?.addLineLayer(
+        'route',
+        'route-line',
+        const ml.LineLayerProperties(
+          lineColor: '#8B5CF6',
+          lineWidth: 8.0,
+          lineOpacity: 1.0,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Route line layer error: $e');
+    }
   }
 
   Widget _buildMap() {
-    final style = _style;
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: _myLocation,
-        // Zoom alto: in navigazione conta la strada sotto le ruote, non la
-        // provincia. La prospettiva ingrandisce ancora il primo piano.
-        initialZoom: 19.0,
-        initialRotation: -_heading,
-        minZoom: 14.0,
-        maxZoom: 19.0,
-        backgroundColor: _style.hazeColor,
-        interactionOptions: const InteractionOptions(
-          // Trascinamento e pizzico si', rotazione no: l'orientamento della
-          // mappa lo decide la rotta di marcia, non il pollice. Girarla a
-          // mano vorrebbe dire perdere il "in alto c'e' dove stai andando",
-          // che e' tutto il senso di questa vista.
-          flags: InteractiveFlag.drag |
-              InteractiveFlag.pinchZoom |
-              InteractiveFlag.doubleTapZoom |
-              InteractiveFlag.flingAnimation,
-        ),
-        onMapEvent: _onMapEvent,
+    return ml.MapLibreMap(
+      initialCameraPosition: ml.CameraPosition(
+        target: ml.LatLng(_myLocation.latitude, _myLocation.longitude),
+        zoom: 17.5,
+        bearing: -_heading,
+        tilt: 55.0,
       ),
-      children: [
-        // La carta OSM ha gia' dentro i nomi delle vie: non serve un
-        // secondo livello sopra, come serviva alla fotografia aerea.
-        _tileLayer(style.urlTemplate),
-
-        if (_navigationActive)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: _routePoints,
-                color: const Color(0xFF8B5CF6),
-                strokeWidth: 8.0,
-                borderColor: const Color(0xFF5B21B6),
-                borderStrokeWidth: 3.0,
-              ),
-            ],
-          ),
-
-        MarkerLayer(
-          markers: [
-            // Autovelox veri, da OpenStreetMap
-            ...SpeedCameraService.instance.cameras.map((c) => Marker(
-                  point: c.at,
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.bottomCenter,
-                  child: _billboard(Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.8),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.alertRed, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.alertRed.withOpacity(0.4),
-                          blurRadius: 8,
-                        )
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.photo_camera,
-                          color: AppTheme.alertRed, size: 18),
-                    ),
-                  )),
-                )),
-
-            // Distributore
-            Marker(
-              point: _gasStationLocation,
-              width: 44,
-              height: 44,
-              alignment: Alignment.bottomCenter,
-              child: _billboard(Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.85),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.amber, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.amber.withOpacity(0.3),
-                      blurRadius: 8,
-                    )
-                  ],
-                ),
-                child: const Center(
-                  child: Icon(Icons.local_gas_station,
-                      color: Colors.amber, size: 20),
-                ),
-              )),
-            ),
-          ],
-        ),
-      ],
+      styleString: 'https://tiles.openfreemap.org/styles/fiord',
+      onMapCreated: (controller) {
+        _mlController = controller;
+      },
+      onStyleLoadedCallback: _onStyleLoaded,
+      myLocationEnabled: false,
+      compassEnabled: false,
+      rotateGesturesEnabled: false,
+      tiltGesturesEnabled: false,
     );
   }
 
-  /// Ogni movimento della mappa passa di qui.
-  ///
-  /// Si distingue chi l'ha mosso: se e' stato il dito si entra in vista libera
-  /// e parte il conto alla rovescia per il rientro; se e' stato il codice
-  /// (l'inseguimento della moto, o l'animazione di rientro) non si tocca
-  /// niente, o si rientrerebbe all'infinito.
-  void _onMapEvent(MapEvent e) {
-    const dita = {
-      MapEventSource.dragStart,
-      MapEventSource.onDrag,
-      MapEventSource.dragEnd,
-      MapEventSource.multiFingerGestureStart,
-      MapEventSource.onMultiFinger,
-      MapEventSource.multiFingerEnd,
-      MapEventSource.doubleTap,
-      MapEventSource.doubleTapHold,
-      MapEventSource.flingAnimationController,
-      MapEventSource.scrollWheel,
-    };
-
-    if (dita.contains(e.source)) {
-      _recenterAnim.stop();
-      _recenterTimer?.cancel();
-      _recenterTimer = Timer(_recenterAfter, _recenterToRider);
-      if (!_freeLook) setState(() => _freeLook = true);
-      return;
-    }
-
-    // Anche senza dito la moto va riposizionata: la mappa si e' mossa e lei
-    // sta appesa a una coordinata, non a un punto dello schermo.
-    if (mounted) setState(() {});
-  }
-
-  /// Riporta la mappa sulla moto, con mezzo secondo di animazione.
-  void _recenterToRider() {
-    if (!mounted) return;
-    try {
-      _recenterFrom = _mapController.camera.center;
-      _recenterFromRot = _mapController.camera.rotation;
-    } catch (_) {
-      _recenterFrom = null;
-    }
-    _recenterAnim.forward(from: 0);
-  }
-
-  void _stepRecenter() {
-    final da = _recenterFrom;
-    final daRot = _recenterFromRot;
-    if (da == null || daRot == null) return;
-
-    final t = Curves.easeInOut.transform(_recenterAnim.value);
-
-    // La rotazione si interpola per la via corta, o passando per il nord la
-    // mappa fa un giro completo su se stessa.
-    var deltaRot = ((-_heading) - daRot + 540) % 360 - 180;
-
-    _mapController.moveAndRotate(
-      LatLng(
-        da.latitude + (_myLocation.latitude - da.latitude) * t,
-        da.longitude + (_myLocation.longitude - da.longitude) * t,
-      ),
-      _mapController.camera.zoom,
-      daRot + deltaRot * t,
-    );
-
-    if (_recenterAnim.isCompleted && _freeLook) {
-      setState(() => _freeLook = false);
-    }
-  }
-
-  /// La matrice della scena. Serve a due cose che devono restare d'accordo:
-  /// deformare la mappa, e sapere dove finisce sullo schermo un punto che ci
-  /// sta sopra.
-  Matrix4 _groundMatrix(Size size) => Matrix4.identity()
-    ..setEntry(3, 2, _perspectiveDepth)
-    ..translate(0.0, size.height * _cameraShift)
-    ..rotateX(-_pitch);
-
-  /// La moto, ancorata dove il centro della mappa finisce sullo schermo.
+  /// La moto, in posizione fissa al centro-basso della schermata.
   Widget _buildRider(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final posizione = _riderOnScreen(size);
     return Positioned(
-      left: posizione.dx - 66,
-      top: posizione.dy - 66,
+      left: size.width / 2 - 66,
+      top: size.height * 0.55 - 66,
       width: 132,
       height: 132,
       child: IgnorePointer(
@@ -1524,54 +1299,14 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         },
         child: Stack(
           children: [
-          // ── LA STRADA, INCLINATA COME LA VEDI DALLA SELLA ───────────
-          _buildGround(context),
+          // ── LA MAPPA 3D MAPLIBRE (full screen) ─────────────────────────
+          Positioned.fill(child: _buildMap()),
 
-          // ── LA DISTANZA CHE SBIANCA ─────────────────────────────────
-          // Un velo solo, del colore della carta. Fa due lavori in uno:
-          // copre il bordo alto della mappa (dove il piano finisce) e da'
-          // profondita', perche' e' quello che fa la foschia davvero — il
-          // lontano non diventa scuro, diventa lattiginoso.
-          //
-          // Sulla fotografia aerea di prima il velo era nero, per non farsi
-          // sbiancare i numeri al neon dal sole sui tetti. Su una carta chiara
-          // un velo nero farebbe fango: i riquadri dell'interfaccia hanno gia'
-          // il loro fondo scuro e si leggono da soli.
-          IgnorePointer(
-            child: Builder(builder: (ctx) {
-              final size = MediaQuery.of(ctx).size;
-              final edge = _mapTopEdge(size);
-              final fine = ((edge + size.height * 0.42) / size.height)
-                  .clamp(0.0, 1.0);
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [
-                      0.0,
-                      (edge / size.height).clamp(0.0, fine),
-                      fine,
-                      1.0,
-                    ],
-                    colors: [
-                      _style.hazeColor,
-                      _style.hazeColor.withOpacity(0.82),
-                      _style.hazeColor.withOpacity(0.0),
-                      _style.hazeColor.withOpacity(0.0),
-                    ],
-                  ),
-                ),
-                child: const SizedBox.expand(),
-              );
-            }),
-          ),
-
-          // ── LA MOTO ───────────────────────────────────
-          // Sta fuori dalla mappa, non dentro: se fosse un marcatore la
-          // prospettiva la schiaccerebbe insieme all'asfalto. Cosi' resta
-          // nitida e in piedi, e tu la guardi da dietro e dall'alto.
+          // ── LA MOTO ────────────────────────────────────────────────────
+          // Sta sopra la mappa, in posizione fissa: la mappa si muove,
+          // la moto resta sempre al centro-basso della schermata.
           _buildRider(context),
+
 
           // ── PULSANTE CHIUDI A SCOMPARSA (Swipe down per visualizzarlo al centro in alto) ──
           AnimatedPositioned(
@@ -1861,15 +1596,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
             ),
           ),
 
-          // Attribuzione cartografica: piccola ma dovuta (OpenStreetMap)
+          // Attribuzione cartografica: piccola ma dovuta (OpenFreeMap + OSM)
           Positioned(
             left: 16,
             bottom: 2,
             child: Text(
-              _style.attribution,
+              '© OpenFreeMap © OpenStreetMap contributors',
               style: GoogleFonts.orbitron(
                 fontSize: 6,
-                color: _style.inkColor,
+                color: Colors.white54,
               ),
             ),
           ),
@@ -2276,50 +2011,6 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                         ],
                       ],
                     ),
-                  ),
-                ),
-              ),
-            ),
-
-          // ── VISTA LIBERA ────────────────────────────────────────────
-          // Compare solo mentre stai guardando in giro col dito. Serve a
-          // spiegare perche' la mappa non ti sta piu' seguendo — senza,
-          // sembrerebbe che si sia impiantata — e a tornare subito senza
-          // aspettare i tre secondi.
-          if (_freeLook)
-            Positioned(
-              left: 12,
-              bottom: 86,
-              child: GestureDetector(
-                onTap: () {
-                  _recenterTimer?.cancel();
-                  _recenterToRider();
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppTheme.activeCyan.withOpacity(0.55)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.my_location,
-                          size: 13, color: AppTheme.activeCyan),
-                      const SizedBox(width: 7),
-                      Text(
-                        'VISTA LIBERA · TOCCA PER TORNARE',
-                        style: GoogleFonts.orbitron(
-                          fontSize: 7.5,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
