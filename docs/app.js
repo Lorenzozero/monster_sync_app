@@ -249,12 +249,12 @@ tl.to(viewerParams, {
 })
 // Pausa di scorrimento vuota (la tabella è sparita, il mockup non è ancora iniziato)
 .to({}, { duration: 0.5 })
-// Stage 7: Hardware -> Mockup Mobile (Moto riappare su desktop, scompare su mobile)
+// Stage 7: Hardware -> Cruscotto / Mockup Mobile (Moto a sinistra su desktop, nascosta su mobile)
 .to(viewerParams, {
-  orbitTheta: -90,
-  orbitPhi: 55,
-  orbitRadius: 90,
-  x: -18,
+  orbitTheta: 270, // Vista laterale sinistra — coerente con sezione copilota
+  orbitPhi: 72,
+  orbitRadius: 88,
+  x: -22,          // Moto decisamente a sinistra
   roll: 0,
   pitch: 0,
   yaw: 0,
