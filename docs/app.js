@@ -328,11 +328,12 @@ ScrollTrigger.create({
     const phone = document.getElementById('phone-mockup');
     const portraitView = document.getElementById('mock-portrait-view');
     const landscapeView = document.getElementById('mock-landscape-view');
-    
+    const notch = document.getElementById('phone-notch');
+
     if (phone) {
       phone.style.transform = `rotate(${angle}deg)`;
     }
-    
+
     // Dissolvenza incrociata delle viste
     if (portraitView && landscapeView) {
       if (progress > 0.5) {
@@ -340,11 +341,15 @@ ScrollTrigger.create({
         portraitView.style.pointerEvents = 'none';
         landscapeView.style.opacity = '1';
         landscapeView.style.pointerEvents = 'auto';
+        // Il notch ruota col telefono e in landscape finisce sul bordo destro,
+        // coprendo le marce dello screenshot reale: nascosto insieme alla vista portrait
+        if (notch) notch.style.opacity = '0';
       } else {
         portraitView.style.opacity = '1';
         portraitView.style.pointerEvents = 'auto';
         landscapeView.style.opacity = '0';
         landscapeView.style.pointerEvents = 'none';
+        if (notch) notch.style.opacity = '1';
       }
     }
   }
