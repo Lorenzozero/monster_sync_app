@@ -289,9 +289,21 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       _selectedDestinationName = dest.name;
     });
 
-    final opts = await RoutePlanner.instance.alternatives(_myLocation, dest.coord);
+    // Carica in parallelo le rotte e il meteo alla destinazione
+    final results = await Future.wait([
+      RoutePlanner.instance.alternatives(_myLocation, dest.coord),
+      WeatherService.instance
+          .forPosition(dest.coord.latitude, dest.coord.longitude),
+    ]);
     if (!mounted) return;
-    setState(() => _routeLoading = false);
+
+    final opts = results[0] as List<RouteOption>;
+    final destWeather = results[1] as WeatherInfo?;
+    setState(() {
+      _routeLoading = false;
+      _weatherDest = destWeather;
+      _destWeatherName = dest.name.toUpperCase();
+    });
 
     // Una sola possibilita' (o nessuna rete): non c'e' niente da scegliere.
     if (opts.length < 2) {
@@ -788,6 +800,8 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       _route = null;
       _routePoints = [];
       _selectedDestinationName = '';
+      _weatherDest = null;
+      _destWeatherName = '';
     });
   }
 
@@ -833,6 +847,10 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
 
   // Meteo reale (Open-Meteo). Null finche' la prima lettura non arriva.
   WeatherInfo? _weather;
+
+  // Meteo alla destinazione scelta. Null se nessuna rotta attiva.
+  WeatherInfo? _weatherDest;
+  String _destWeatherName = '';
 
   Future<void> _loadSpeedCameras() async {
     await SpeedCameraService.instance.ensureLoaded(_myLocation);
@@ -1599,70 +1617,141 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
           Positioned(
             top: 12,
             right: 60,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // BOX 1: meteo posizione attuale (moto)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 15),
-                      const SizedBox(width: 5),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.wb_sunny_outlined, color: AppTheme.activeCyan, size: 15),
+                          const SizedBox(width: 5),
+                          Text(
+                            _weather == null
+                                ? "--°C"
+                                : "${_weather!.temperatureC.toStringAsFixed(0)}°C",
+                            style: GoogleFonts.orbitron(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 11),
+                          const SizedBox(width: 3),
+                          Text(
+                            "ARZERGRANDE (PD)",
+                            style: GoogleFonts.orbitron(
+                              fontSize: 7,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      // Condizione dell'asfalto: e' l'informazione che serve
+                      // davvero in moto, molto piu' dei gradi.
                       Text(
                         _weather == null
-                            ? "--°C"
-                            : "${_weather!.temperatureC.toStringAsFixed(0)}°C",
-                        style: GoogleFonts.orbitron(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.location_on, color: AppTheme.activeCyan, size: 11),
-                      const SizedBox(width: 3),
-                      Text(
-                        "S. GODENZO (FI)",
+                            ? "METEO NON DISPONIBILE"
+                            : (_weather!.road == RoadCondition.dry
+                                ? "ASFALTO ASCIUTTO"
+                                : "${_weather!.roadLabel} ⚠️"),
                         style: GoogleFonts.orbitron(
                           fontSize: 7,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: (_weather?.road ?? RoadCondition.dry) ==
+                                  RoadCondition.dry
+                              ? AppTheme.activeCyan
+                              : AppTheme.alertRed,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  // Condizione dell'asfalto: e' l'informazione che serve
-                  // davvero in moto, molto piu' dei gradi.
-                  Text(
-                    _weather == null
-                        ? "METEO NON DISPONIBILE"
-                        : (_weather!.road == RoadCondition.dry
-                            ? "ASFALTO ASCIUTTO"
-                            : "${_weather!.roadLabel} ⚠️"),
-                    style: GoogleFonts.orbitron(
-                      fontSize: 7,
-                      fontWeight: FontWeight.bold,
-                      color: (_weather?.road ?? RoadCondition.dry) ==
-                              RoadCondition.dry
-                          ? AppTheme.activeCyan
-                          : AppTheme.alertRed,
+                ),
+                // BOX 2: meteo alla destinazione (visibile solo se rotta attiva)
+                if (_weatherDest != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.85),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.flag_outlined, color: Colors.amber, size: 15),
+                            const SizedBox(width: 5),
+                            Text(
+                              "${_weatherDest!.temperatureC.toStringAsFixed(0)}°C",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on, color: Colors.amber, size: 11),
+                            const SizedBox(width: 3),
+                            Text(
+                              _destWeatherName.length > 14
+                                  ? "${_destWeatherName.substring(0, 14)}…"
+                                  : _destWeatherName,
+                              style: GoogleFonts.orbitron(
+                                fontSize: 7,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _weatherDest!.road == RoadCondition.dry
+                              ? "ASFALTO ASCIUTTO"
+                              : "${_weatherDest!.roadLabel} ⚠️",
+                          style: GoogleFonts.orbitron(
+                            fontSize: 7,
+                            fontWeight: FontWeight.bold,
+                            color: _weatherDest!.road == RoadCondition.dry
+                                ? AppTheme.activeCyan
+                                : AppTheme.alertRed,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
 
