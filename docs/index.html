@@ -191,26 +191,19 @@
                 <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€1.00</td>
                 <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-1n4148.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
-              <!-- Buck automotive -->
+              <!-- Buck -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">Buck 12V→5V automotive</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">LM5164 (65V). <span class="text-red-400">L'LM2596 regge 40V e non ha protezione da load dump</span>: sui Monster il regolatore che cede li supera</td>
-                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€12.00</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm5164.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">Buck 12V→5V — LM2596</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Modulo pronto e verificato. <span class="text-red-400">Regge 40V, non protezione da load dump</span>: sui Monster il regolatore che cede li supera — per questo sotto ci sono TVS e MOSFET obbligatori, non opzionali</td>
+                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€2.00</td>
+                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-lm2596.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- Protezioni -->
               <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">TVS SMAJ33A + MOSFET P</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Sovratensioni e inversione di polarità. Indispensabili se scegli l'LM2596 al posto dell'LM5164</td>
+                <td class="p-1.5 sm:p-3 font-semibold text-white">TVS SMAJ33A + AO3401</td>
+                <td class="p-1.5 sm:p-3 text-gray-400">Sovratensioni e inversione di polarità, <span class="text-red-400">obbligatorie con l'LM2596</span>. Valutato anche l'LM5164 (buck automotive 65V, load-dump nativo): costa di più a pezzo singolo e va saldato da zero su un layout switching — più rischio nella costruzione hobbistica del chip stesso che nel silicio</td>
                 <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">€2.00</td>
                 <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-smaj33a.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
-              </tr>
-              <!-- Termocoppia testa -->
-              <tr>
-                <td class="p-1.5 sm:p-3 font-semibold text-white">Termocoppia K + MAX31855</td>
-                <td class="p-1.5 sm:p-3 text-gray-400">Temperatura testa verticale con anello sotto candela: su un motore ad aria e' il parametro che anticipa i guai, e risponde in secondi. <span class="text-red-400">MAX31855, non MAX6675</span>: il 6675 e' obsoleto e parte da 0 &deg;C</td>
-                <td class="p-1.5 sm:p-3 text-right font-mono text-cyan-400">&euro;18.00</td>
-                <td class="p-1.5 sm:p-3 text-center"><a href="https://it.aliexpress.com/w/wholesale-spark-plug-ring-thermocouple-type-k.html" target="_blank" rel="noopener" class="text-red-400 hover:text-white font-bold underline transition-colors">Link</a></td>
               </tr>
               <!-- Partitore tensione batteria -->
               <tr>
@@ -246,14 +239,15 @@
 
         <div class="flex justify-between items-center text-xs font-orbitron border-t border-white/10 pt-4">
           <span class="text-gray-400">COSTO TOTALE STIMATO:</span>
-          <span class="text-cyan-400 font-bold text-base">~ €75</span>
+          <span class="text-cyan-400 font-bold text-base">~ €46</span>
         </div>
 
         <div class="mt-4 border border-cyan-500/20 bg-cyan-950/20 rounded-lg p-3">
           <p class="text-[9px] text-gray-400 leading-relaxed">
-            <span class="font-orbitron text-[8px] text-cyan-400 tracking-wider">DUE NOTE</span><br>
+            <span class="font-orbitron text-[8px] text-cyan-400 tracking-wider">TRE NOTE</span><br>
             <strong class="text-white">La soglia di allarme temperatura non si copia da internet</strong>: registra tre o quattro giri normali, guarda dove si assesta la tua moto in autostrada e nel traffico, e mettila a quella linea di base pi&ugrave; una ventina di gradi. &nbsp;&middot;&nbsp;
-            <strong class="text-white">ICM-42688-P</strong> (~&euro;15) al posto dell'MPU-6050 se la telemetria deve essere seria: basso rumore e filtro anti-alias interno.
+            <strong class="text-white">ICM-42688-P</strong> (~&euro;15) al posto dell'MPU-6050 se la telemetria deve essere seria: basso rumore e filtro anti-alias interno. &nbsp;&middot;&nbsp;
+            <strong class="text-white">Niente termocoppia sulla testa</strong>: la 695 ha gi&agrave; un NTC di serie che alimenta la ECU, si legge in parallelo con un buffer ad alta impedenza (poche righe di firmware) invece di comprare un secondo sensore da 18&euro;.
           </p>
         </div>
 
