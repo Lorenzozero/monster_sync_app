@@ -87,18 +87,15 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   //  - con quella inclinazione il fondo si comprime, quindi il widget della
   //    mappa deve essere largo il doppio e alto 3,6 volte lo schermo, o in
   //    alto restano strisce vuote.
-  static const double _pitch = 1.152;               // 66 gradi in radianti
+  static const double _pitch = 1.257;               // 72 gradi in radianti
   static const double _perspectiveDepth = 1 / 625.0;
   /// Quanto la scena scende rispetto al centro dello schermo — cioe' dove
   /// finisce la moto.
   ///
-  /// A 0,30 la moto cadeva a 0,80 dell'altezza, sotto il pannello
-  /// dell'assistente: mezza nascosta. Deve stare **sopra** la barra in basso,
-  /// come il segnalino in tutti i navigatori. La sensazione di vicinanza non
-  /// la da' questo numero ma l'inclinazione, che infatti e' salita a 62 gradi.
-  static const double _cameraShift = 0.16;
+  /// Ridotto per mantenere la moto ben visibile con il nuovo pitch più alto.
+  static const double _cameraShift = 0.14;
   static const double _planeWidthFactor = 1.8;
-  static const double _planeHeightFactor = 2.6;
+  static const double _planeHeightFactor = 3.0;
 
   /// Dove finisce, sullo schermo, il bordo alto della mappa — misurato in
   /// pixel dal bordo alto del riquadro.
@@ -150,6 +147,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     final ctl = TextEditingController();
     List<Place> results = const [];
     bool searching = false;
+    Timer? debounce;
 
     final picked = await showModalBottomSheet<Place>(
       context: context,
@@ -161,6 +159,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) {
           Future<void> doSearch() async {
+            if (ctl.text.trim().length < 2) return;
             setSheet(() => searching = true);
             final r = await GeocodingService.instance
                 .search(ctl.text, near: _myLocation);
@@ -188,6 +187,17 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                         autofocus: true,
                         textInputAction: TextInputAction.search,
                         onSubmitted: (_) => doSearch(),
+                        onChanged: (text) {
+                          debounce?.cancel();
+                          if (text.trim().length >= 2) {
+                            debounce = Timer(
+                              const Duration(milliseconds: 450),
+                              doSearch,
+                            );
+                          } else {
+                            setSheet(() => results = const []);
+                          }
+                        },
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Dove vuoi andare?',
@@ -808,11 +818,12 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     });
   }
 
-  // Coordinate di riferimento (Passo del Muraglione, Mugello/Toscana) - NON final per aggiornamento in corsa
-  LatLng _myLocation = const LatLng(43.9961, 11.6429);
+  // Coordinate di riferimento (Arzergrande, PD) - NON final per aggiornamento in corsa
+  // Posizione fissa finché non ci sono i sensori hardware collegati
+  LatLng _myLocation = const LatLng(45.3447, 11.9286);
 
-  // Coordinata distributore IP più vicino
-  final LatLng _gasStationLocation = const LatLng(44.0010, 11.6520);
+  // Coordinata distributore IP più vicino ad Arzergrande
+  final LatLng _gasStationLocation = const LatLng(45.3510, 11.9410);
 
   // Lista di coordinate per tracciare la rotta (polyline)
   List<LatLng> _routePoints = [];
@@ -1132,37 +1143,58 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
     final cmdLower = command.toLowerCase();
 
     if (cmdLower.contains("distributore") || cmdLower.contains("benzina") || cmdLower.contains("carburante")) {
-      setState(() => _assistantText = "Comando ricevuto: '$command'");
+      setState(() => _assistantText = "Cerco il distributore più vicino...");
+      await _tts.speak("Cerco il distributore più vicino e lo mostro sulla mappa.");
 
-      // Sceglie il navigatore migliore disponibile: OsmAnd (offline, con
-      // limiti e autovelox) > Waze (solo con rete) > mappa interna.
-      final nav = await NavigationService.instance.navigateTo(
-        _gasStationLocation.latitude,
-        _gasStationLocation.longitude,
-        name: 'Distributore IP',
-        fromLat: _myLocation.latitude,
-        fromLon: _myLocation.longitude,
+      // Cerca il distributore via geocoding (OpenStreetMap, nessuna app esterna)
+      final results = await GeocodingService.instance.search(
+        'distributore benzina',
+        near: _myLocation,
       );
 
-      if (nav.target == NavigationTarget.internal) {
-        // Nessun navigatore: almeno disegna la rotta sulla mappa dell'app
-        setState(() {
-          _navigationActive = true;
-          _routePoints = [
-            _myLocation,
-            const LatLng(43.9980, 11.6450), // Passa dall'autovelox
-            _gasStationLocation,
-          ];
-        });
-        _mapController.move(
-            LatLng(
-              (_myLocation.latitude + _gasStationLocation.latitude) / 2,
-              (_myLocation.longitude + _gasStationLocation.longitude) / 2,
-            ),
-            14.5);
+      if (!mounted) return;
+
+      if (results.isNotEmpty) {
+        // Prende il più vicino
+        final dest = results.first;
+        setState(() => _assistantText = "Navigazione verso ${dest.name}");
+        await _chooseRoute(dest);
+      } else {
+        // Fallback: distributore fisso salvato nell'app
+        final Place fallback = Place(
+          'Distributore vicino',
+          'Arzergrande',
+          _gasStationLocation,
+        );
+        setState(() => _assistantText = "Navigazione verso distributore vicino");
+        await _chooseRoute(fallback);
+      }
+    } else if (cmdLower.contains("vai a") || cmdLower.contains("naviga verso") || cmdLower.contains("portami a")) {
+      // Estrai la destinazione dal comando
+      final dest = cmdLower
+          .replaceAll("vai a", "")
+          .replaceAll("naviga verso", "")
+          .replaceAll("portami a", "")
+          .trim();
+
+      if (dest.isEmpty) {
+        setState(() => _assistantText = "Non ho capito la destinazione. Prova: 'vai a Milano'.");
+        await _tts.speak("Non ho capito la destinazione.");
+        return;
       }
 
-      await _tts.speak(nav.spokenMessage);
+      setState(() => _assistantText = "Cerco '$dest'...");
+      await _tts.speak("Cerco $dest.");
+
+      final results = await GeocodingService.instance.search(dest, near: _myLocation);
+      if (!mounted) return;
+
+      if (results.isNotEmpty) {
+        await _chooseRoute(results.first);
+      } else {
+        setState(() => _assistantText = "Non ho trovato '$dest'. Prova con la lente 🔍.");
+        await _tts.speak("Non ho trovato $dest. Prova a cercare con la lente.");
+      }
     } else {
       setState(() =>
           _assistantText = "Non ho capito: '$command'. Prova con 'distributore'.");
@@ -1228,7 +1260,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
         initialCenter: _myLocation,
         // Zoom alto: in navigazione conta la strada sotto le ruote, non la
         // provincia. La prospettiva ingrandisce ancora il primo piano.
-        initialZoom: 18.0,
+        initialZoom: 19.0,
         initialRotation: -_heading,
         minZoom: 14.0,
         maxZoom: 19.0,
@@ -1838,18 +1870,13 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
                   ),
                   const SizedBox(width: 10),
 
-                  // Navigazione rapida: OsmAnd se c'è, altrimenti Waze
+                  // Navigazione interna: apre la ricerca destinazione
                   GestureDetector(
-                    onTap: () async {
-                      final nav = await NavigationService.instance.navigateTo(
-                        _gasStationLocation.latitude,
-                        _gasStationLocation.longitude,
-                        name: 'Distributore IP',
-                        fromLat: _myLocation.latitude,
-                        fromLon: _myLocation.longitude,
-                      );
-                      if (nav.target == NavigationTarget.internal) {
-                        await _tts.speak(nav.spokenMessage);
+                    onTap: () {
+                      if (_internalNavActive) {
+                        _stopInternalNavigation();
+                      } else {
+                        _openDestinationSearch();
                       }
                     },
                     child: Container(
