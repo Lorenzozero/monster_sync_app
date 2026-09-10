@@ -117,7 +117,7 @@ class _DigitalDashboardViewState extends State<DigitalDashboardView> with Ticker
   /// Una sola vista, satellite e inclinata. I due pulsanti che ciclavano gli
   /// stili e spegnevano il 3D sono spariti: in moto una scelta da fare e' una
   /// scelta di troppo.
-  static const MapStyle _style = MapStyle.chiara;
+  static const MapStyle _style = MapStyle.scura;
 
   // ── VISTA LIBERA ──────────────────────────────────────────────────────────
   // Col dito si sposta la mappa per guardare cosa c'e' piu' avanti. Poi torna

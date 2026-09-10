@@ -64,4 +64,15 @@ class MapStyle {
     inkColor: Color(0x99000000),
     attribution: '© OpenStreetMap contributors',
   );
+
+  /// Carto Dark Matter — sfondo quasi nero, strade in grigio chiaro/bianco.
+  /// Ottima leggibilità di notte e con la mappa inclinata del cruscotto.
+  /// Nessuna API key richiesta.
+  static const scura = MapStyle(
+    urlTemplate:
+        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    hazeColor: Color(0xFF0D0D0D),
+    inkColor: Color(0xCCFFFFFF),
+    attribution: '© OpenStreetMap contributors, © CARTO',
+  );
 }
