@@ -186,7 +186,24 @@ tl.to(viewerParams, {
   onReverseComplete: () => setHotspotsVisibility(['engine']),
   duration: 1
 })
-// Stage 6: Burocrazia -> Hardware / AliExpress (Dissolvenza Modello, Rivelazione & Animazione Tabella)
+// Stage 5.5: Scadenze -> Copilota / Pace Notes (Moto a sinistra per fare spazio al testo a destra)
+.to(viewerParams, {
+  orbitTheta: 270, // Vista laterale sinistra — moto guarda verso destra
+  orbitPhi: 72,
+  orbitRadius: 88,
+  x: -22,           // Sposta la moto a sinistra del viewport
+  roll: 0,
+  pitch: 0,
+  yaw: 0,
+  onUpdate: updateCamera,
+  onStart: () => {
+    setHotspotsVisibility([]);
+    if (!noItem) { gsap.to(viewer, { opacity: 1, duration: 0.3 }); }
+  },
+  onReverseComplete: () => setHotspotsVisibility([]),
+  duration: 1
+})
+// Stage 6: Copilota -> Hardware / AliExpress (Dissolvenza Modello, Rivelazione & Animazione Tabella)
 .to(viewerParams, {
   orbitTheta: -90,
   orbitPhi: 45,
@@ -220,6 +237,9 @@ tl.to(viewerParams, {
   display: "flex",
   duration: 1
 }, "<")
+// Pausa: la tabella resta ferma, pienamente visibile e leggibile per un tratto di scroll reale
+.addLabel("hardwareVisible")
+.to({}, { duration: 1.5 })
 // La tabella scivola verso l'alto e scompare ruotando in avanti, venendo poi nascosta completamente (display: none)
 .to(tableAnimTarget, {
   opacity: 0,
@@ -280,6 +300,20 @@ tl.to(viewerParams, {
     }
   },
   duration: 1
+});
+
+// Click sul link HARDWARE del menu: porta esattamente al punto di scroll dove la
+// tabella e' ferma e pienamente visibile (label "hardwareVisible" sopra), non solo
+// all'inizio della sezione placeholder — altrimenti si arriva a meta' del fade-in
+document.querySelectorAll('a[href="#hardware"]').forEach((link) => {
+  link.addEventListener('click', (e) => {
+    const st = tl.scrollTrigger;
+    if (!st) return;
+    e.preventDefault();
+    const progress = tl.labels.hardwareVisible / tl.duration();
+    const targetY = st.start + (st.end - st.start) * progress;
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
+  });
 });
 
 // Animazione di rotazione del telefono mockup a landscape sullo scroll
